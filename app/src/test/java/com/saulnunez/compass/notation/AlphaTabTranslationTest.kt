@@ -16,6 +16,7 @@ import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.domain.Track
 import com.saulnunez.compass.domain.Tuning
 import com.saulnunez.compass.domain.Voice
+import alphaTab.model.Clef
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -107,5 +108,53 @@ class AlphaTabTranslationTest {
 
         assertEquals(120, score.masterBars[0].tempoAutomation!!.value.toInt())
         assertEquals(90, second.tempoAutomation!!.value.toInt())
+    }
+
+    @Test
+    fun `Standard notation writes guitar an octave above its sounding pitch on the treble clef`() {
+        // Guitar music is written an octave higher than it sounds, so the open high E (E4) is written as E5.
+        val highE = score.tracks[0].staves[0].bars[0].voices[0].beats[0].notes[0]
+        assertEquals(64, highE.realValue.toInt())
+        assertEquals(76, highE.displayValue.toInt())
+        assertEquals(Clef.G2, score.tracks[0].staves[0].bars[0].clef)
+    }
+
+    private val bassSong = song.copy(
+        tracks = listOf(
+            Track(
+                name = "Bass",
+                instrument = Instrument(
+                    kind = InstrumentKind.BASS,
+                    tuning = Tuning(listOf(43, 38, 33, 28).map(::Pitch)),
+                ),
+                voice = Voice(
+                    listOf(
+                        listOf(Note(string = 4, fret = 0, duration = Duration.WHOLE)),
+                        emptyList(),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    @Test
+    fun `Standard notation writes bass an octave above its sounding pitch on the bass clef`() {
+        val bassScore = bassSong.toAlphaTabScore(Settings())
+        // The open low E (E1) is written as E2.
+        val lowE = bassScore.tracks[0].staves[0].bars[0].voices[0].beats[0].notes[0]
+        assertEquals(28, lowE.realValue.toInt())
+        assertEquals(40, lowE.displayValue.toInt())
+        assertEquals(Clef.F4, bassScore.tracks[0].staves[0].bars[0].clef)
+        assertEquals(Clef.F4, bassScore.tracks[0].staves[0].bars[1].clef)
+    }
+
+    @Test
+    fun `every Track carries each Measure's key signature`() {
+        val twoTracks = song.copy(tracks = song.tracks + bassSong.tracks).toAlphaTabScore(Settings())
+        (0 until 2).forEach { trackIndex ->
+            val bars = twoTracks.tracks[trackIndex].staves[0].bars
+            assertEquals(AlphaTabKeySignature.C, bars[0].keySignature)
+            assertEquals(AlphaTabKeySignature.G, bars[1].keySignature)
+        }
     }
 }
