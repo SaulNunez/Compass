@@ -13,6 +13,8 @@
 
     <!-- Practice mode: Playback -->
     <string name="playback_play">Play</string>
+    <!-- Edit mode: what the Play action does, for screen readers. -->
+    <string name="playback_play_from_cursor">Play from the cursor</string>
     <!-- Stops Playback and goes back to where it started. -->
     <string name="playback_stop">Stop</string>
     <!-- Toggles the click track (metronome) during Playback. -->

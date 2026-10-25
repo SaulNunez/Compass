@@ -62,14 +62,18 @@ import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Rest
 import com.saulnunez.compass.domain.measureFill
-import com.saulnunez.compass.notation.TablatureView
+import com.saulnunez.compass.domain.ShownViews
+import com.saulnunez.compass.notation.NotationPlayer
+import com.saulnunez.compass.notation.NotationView
+import com.saulnunez.compass.notation.rememberNotationPlayer
 import com.saulnunez.compass.practice.demoSong
 import com.saulnunez.compass.ui.theme.CompassTheme
 
 /**
  * Edit mode: writes Notes and Rests into the Tablature of a Song's first Track through
  * [session]. Every action hands the next session to [onSessionChange]; [onDone] switches back
- * to Practice mode.
+ * to Practice mode. Playback here only plays the Song from the cursor and stops; the tempo
+ * percentage, click and count-in are Practice mode's.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,6 +84,8 @@ fun EditScreen(
     modifier: Modifier = Modifier,
 ) {
     val song = session.song
+    // Tapping the Tablature doesn't start Playback here; only the Play action does, from the cursor.
+    val player = rememberNotationPlayer(playsOnTap = false)
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -92,6 +98,7 @@ fun EditScreen(
                 },
                 navigationIcon = { TextButton(onClick = onDone) { Text(stringResource(R.string.leave_edit_mode)) } },
                 actions = {
+                    PlayFromCursorButton(player, session)
                     TextButton(onClick = { onSessionChange(session.undo()) }, enabled = session.canUndo) {
                         Text(stringResource(R.string.undo))
                     }
@@ -103,7 +110,8 @@ fun EditScreen(
         },
     ) { innerPadding ->
         Column(Modifier.padding(innerPadding).fillMaxSize()) {
-            TablatureView(song, Modifier.weight(1f).fillMaxWidth())
+            // Rebuilt from the edited Song on every change, so Playback always plays what was just written.
+            NotationView(song, ShownViews.TABLATURE, Modifier.weight(1f).fillMaxWidth(), player = player)
             HorizontalDivider()
             MeasureStrip(session, onSessionChange)
             MeasureTools(session, onSessionChange)
@@ -112,6 +120,19 @@ fun EditScreen(
             CursorPad(session, onSessionChange)
             NumberPad(onDigit = { onSessionChange(session.typeDigit(it)) })
         }
+    }
+}
+
+/** Plays the Song from the cursor, or stops Playback and goes back to where it started. */
+@Composable
+private fun PlayFromCursorButton(player: NotationPlayer, session: EditSession) {
+    val playDescription = stringResource(R.string.playback_play_from_cursor)
+    TextButton(
+        onClick = { if (player.isPlaying) player.stop() else player.playFrom(session.cursor) },
+        enabled = player.isReady,
+        modifier = Modifier.semantics { if (!player.isPlaying) contentDescription = playDescription },
+    ) {
+        Text(stringResource(if (player.isPlaying) R.string.playback_stop else R.string.playback_play))
     }
 }
 
