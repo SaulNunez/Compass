@@ -11,8 +11,13 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Compass">
+        <!-- Compose adapts to rotation, window resizing and a light/dark theme switch in place, so the
+             Activity isn't recreated: the alphaTab view, its Playback position and the Edit mode cursor
+             (with its undo history) carry on. alphaTab's view shuts its player down once it leaves the window,
+             so a recreated Activity would lose them. -->
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density|uiMode|keyboard|keyboardHidden|navigation"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.Compass"

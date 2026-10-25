@@ -9,10 +9,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -20,7 +28,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -50,6 +57,7 @@ import com.saulnunez.compass.domain.Measure
 import com.saulnunez.compass.domain.Tempo
 import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.library.keySignatureLabel
+import com.saulnunez.compass.ui.AdaptivePanes
 import com.saulnunez.compass.ui.BEATS_RANGE
 import com.saulnunez.compass.ui.BEAT_UNITS
 import com.saulnunez.compass.ui.Dropdown
@@ -108,20 +116,62 @@ fun EditScreen(
                 },
             )
         },
+        contentWindowInsets = WindowInsets.safeDrawing,
     ) { innerPadding ->
-        Column(Modifier.padding(innerPadding).fillMaxSize()) {
+        // The tools sit beside the Tablature on a wide, landscape screen and below it otherwise.
+        AdaptivePanes(
+            modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding).fillMaxSize(),
+            panel = { sideBySide -> EditTools(session, onSessionChange, sideBySide) },
+        ) {
             // Rebuilt from the edited Song on every change, so Playback always plays what was just written.
-            NotationView(song, ShownViews.TABLATURE, Modifier.weight(1f).fillMaxWidth(), player = player)
-            HorizontalDivider()
+            NotationView(song, ShownViews.TABLATURE, Modifier.fillMaxSize(), player = player)
+        }
+    }
+}
+
+/**
+ * Everything that edits the Song. The cursor and number pads stay put at the bottom, within reach;
+ * the tools above them scroll when there isn't room for all of them (a phone on its side).
+ */
+@Composable
+private fun EditTools(session: EditSession, onSessionChange: (EditSession) -> Unit, sideBySide: Boolean) {
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+    Column(
+        Modifier
+            .then(if (sideBySide) Modifier.fillMaxHeight() else Modifier)
+            .drawBehind {
+                // Separates the tools from the Tablature: a line on the side they share.
+                val stroke = 1.dp.toPx()
+                if (sideBySide) {
+                    drawLine(dividerColor, Offset(stroke / 2, 0f), Offset(stroke / 2, size.height), stroke)
+                } else {
+                    drawLine(dividerColor, Offset(0f, stroke / 2), Offset(size.width, stroke / 2), stroke)
+                }
+            },
+    ) {
+        Column(
+            Modifier
+                // Takes all the room above the pads beside the Tablature; only what it needs below it.
+                .weight(1f, fill = sideBySide)
+                .verticalScroll(rememberScrollState())
+                .padding(top = 4.dp),
+        ) {
             MeasureStrip(session, onSessionChange)
             MeasureTools(session, onSessionChange)
             MeasureEditor(session)
             DurationBar(session, onSessionChange)
+        }
+        // On a tablet the pads keep a thumb-sized width rather than stretching across the screen.
+        Column(
+            Modifier.widthIn(max = PADS_MAX_WIDTH).fillMaxWidth().align(Alignment.CenterHorizontally),
+        ) {
             CursorPad(session, onSessionChange)
             NumberPad(onDigit = { onSessionChange(session.typeDigit(it)) })
         }
     }
 }
+
+private val PADS_MAX_WIDTH = 560.dp
 
 /** Plays the Song from the cursor, or stops Playback and goes back to where it started. */
 @Composable
