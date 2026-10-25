@@ -28,7 +28,7 @@ class PracticeModeTest {
 
     @Test
     fun practiceModeOffersOnlyLeavingAndSwitchingToEditMode() {
-        compose.setContent { PracticeScreen(demoSong, onBack = {}, onEdit = {}) }
+        compose.setContent { PracticeScreen(demoSong, onBack = {}, onEdit = {}, onShare = {}) }
 
         // Back to the Library, the explicit switch to Edit mode and the choice of shown views
         // (which leaves the Song alone) are the only actions: no number pad, Duration choice,
@@ -44,7 +44,7 @@ class PracticeModeTest {
     fun editModeIsEnteredOnlyThroughTheEditAction() {
         var editing by mutableStateOf(false)
         compose.setContent {
-            if (editing) Text("editing") else PracticeScreen(demoSong, onBack = {}, onEdit = { editing = true })
+            if (editing) Text("editing") else PracticeScreen(demoSong, onBack = {}, onEdit = { editing = true }, onShare = {})
         }
 
         compose.onAllNodesWithText("editing").assertCountEquals(0)
