@@ -7,14 +7,24 @@ import alphaTab.Settings
 import alphaTab.model.Score
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.viewinterop.AndroidView
+import com.saulnunez.compass.R
 import com.saulnunez.compass.domain.ShownViews
 import com.saulnunez.compass.domain.Song
 
@@ -84,39 +94,52 @@ fun NotationView(
     val score = remember(song) { song.toAlphaTabScore(settings) }
     // Follows the system's light or dark theme, which can change while the screen is open.
     val theme = MaterialTheme.colorScheme.notationTheme()
-    AndroidView(
-        modifier = modifier,
-        factory = { context ->
-            AlphaTabView(context, null).apply {
-                // Listen before the player is created, so its first ready event isn't missed.
-                player?.attach(api)
-                if (player != null) startPlayerAfterFirstRender(settings)
-                // The settings are applied once, by the first update, with the views and colours.
-            }
-        },
-        onRelease = { player?.detach() },
-        update = { view ->
-            // update runs on every recomposition; only re-render what changed.
-            val drawn = view.tag as Drawn?
-            if (drawn?.views != shownViews || drawn.theme != theme) {
-                settings.show(shownViews)
-                settings.use(theme.colors)
-                view.setBackgroundColor(theme.background)
-                // Read again whenever the settings are re-applied, so the cursors change colour too.
-                view.barCursorFillColor = theme.barCursor
-                view.beatCursorFillColor = theme.beatCursor
-                // Re-applying the settings re-renders whatever Score the view holds.
-                view.settings = settings
-            }
-            if (drawn?.score !== score || drawn.track != track) {
-                // Setting tracks (rather than calling renderScore) lets alphaTab wait until the
-                // view is visible and measured; rendering earlier is skipped at width 0.
-                view.tracks = listOf(score.tracks[track])
-            }
-            if (controls != null && drawn?.controls != controls) view.api.apply(controls)
-            view.tag = Drawn(score, track, shownViews, controls, theme)
-        },
-    )
+    // alphaTab's first drawing of a view can take a while (much longer in debug builds), so the
+    // empty notation area shows it is still being prepared until then. Only the first drawing:
+    // later redraws (an edit, another view) are quick and keep showing the previous notation.
+    var firstDrawn by remember { mutableStateOf(false) }
+    Box(modifier) {
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { context ->
+                AlphaTabView(context, null).apply {
+                    onFirstRender { firstDrawn = true }
+                    // A failed drawing must not leave the indicator spinning for good.
+                    api.error.on { firstDrawn = true }
+                    // Listen before the player is created, so its first ready event isn't missed.
+                    player?.attach(api)
+                    if (player != null) startPlayerAfterFirstRender(settings)
+                    // The settings are applied once, by the first update, with the views and colours.
+                }
+            },
+            onRelease = { player?.detach() },
+            update = { view ->
+                // update runs on every recomposition; only re-render what changed.
+                val drawn = view.tag as Drawn?
+                if (drawn?.views != shownViews || drawn.theme != theme) {
+                    settings.show(shownViews)
+                    settings.use(theme.colors)
+                    view.setBackgroundColor(theme.background)
+                    // Read again whenever the settings are re-applied, so the cursors change colour too.
+                    view.barCursorFillColor = theme.barCursor
+                    view.beatCursorFillColor = theme.beatCursor
+                    // Re-applying the settings re-renders whatever Score the view holds.
+                    view.settings = settings
+                }
+                if (drawn?.score !== score || drawn.track != track) {
+                    // Setting tracks (rather than calling renderScore) lets alphaTab wait until the
+                    // view is visible and measured; rendering earlier is skipped at width 0.
+                    view.tracks = listOf(score.tracks[track])
+                }
+                if (controls != null && drawn?.controls != controls) view.api.apply(controls)
+                view.tag = Drawn(score, track, shownViews, controls, theme)
+            },
+        )
+        if (!firstDrawn) {
+            val loading = stringResource(R.string.notation_loading)
+            CircularProgressIndicator(Modifier.align(Alignment.Center).semantics { contentDescription = loading })
+        }
+    }
 }
 
 /**
@@ -125,13 +148,21 @@ fun NotationView(
  * soundfont on the main thread, opening the audio output, and parsing the soundfont on a worker
  * thread) competed with the first render and held up the Song appearing.
  */
-private fun AlphaTabView.startPlayerAfterFirstRender(settings: Settings) {
+private fun AlphaTabView.startPlayerAfterFirstRender(settings: Settings) = onFirstRender {
+    settings.player.playerMode = PlayerMode.EnabledSynthesizer
+    // Creates the player and loads the MIDI for the Score shown, without drawing it again.
+    api.updateSettings()
+}
+
+/**
+ * Runs [action] once, on the main thread, when the view has first drawn a Score. Renders that
+ * finish before a Score is set (alphaTab draws nothing at width 0) don't count.
+ */
+private fun AlphaTabView.onFirstRender(action: () -> Unit) {
     var unsubscribe: () -> Unit = {}
     unsubscribe = api.postRenderFinished.on {
         if (api.score == null) return@on
         unsubscribe()
-        settings.player.playerMode = PlayerMode.EnabledSynthesizer
-        // Creates the player and loads the MIDI for the Score shown, without drawing it again.
-        api.updateSettings()
+        action()
     }
 }
