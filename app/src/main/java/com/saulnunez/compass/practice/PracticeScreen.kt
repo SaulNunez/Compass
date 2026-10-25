@@ -36,7 +36,13 @@ import com.saulnunez.compass.ui.theme.CompassTheme
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PracticeScreen(song: Song, onBack: () -> Unit, onEdit: () -> Unit, modifier: Modifier = Modifier) {
+fun PracticeScreen(
+    song: Song,
+    onBack: () -> Unit,
+    onEdit: () -> Unit,
+    onShare: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -55,7 +61,10 @@ fun PracticeScreen(song: Song, onBack: () -> Unit, onEdit: () -> Unit, modifier:
                     }
                 },
                 navigationIcon = { BackToLibraryButton(onBack) },
-                actions = { TextButton(onClick = onEdit) { Text(stringResource(R.string.enter_edit_mode)) } },
+                actions = {
+                    TextButton(onClick = onShare) { Text(stringResource(R.string.song_share)) }
+                    TextButton(onClick = onEdit) { Text(stringResource(R.string.enter_edit_mode)) }
+                },
             )
         },
     ) { innerPadding ->
@@ -99,6 +108,6 @@ private fun ShownViews.label(): Int = when (this) {
 @Composable
 private fun PracticeScreenPreview() {
     CompassTheme {
-        PracticeScreen(demoSong, onBack = {}, onEdit = {})
+        PracticeScreen(demoSong, onBack = {}, onEdit = {}, onShare = {})
     }
 }
