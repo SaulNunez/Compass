@@ -139,4 +139,12 @@
         <item>D♯ minor</item>
         <item>A♯ minor</item>
     </string-array>
+    <string name="insert_measure_before">Insert Measure before</string>
+    <string name="insert_measure_after">Insert Measure after</string>
+    <string name="delete_measure">Delete Measure</string>
+    <string name="measure_settings_summary">%1$d/%2$d · %3$s · %4$d BPM</string>
+    <string name="change_measure_settings">Change time signature, key signature and Tempo: %1$s</string>
+    <string name="measure_settings_title">Measure %1$d</string>
+    <string name="measure_settings_hint">Changes apply to every Track, from this Measure until the next change.</string>
+    <string name="apply">Apply</string>
 </resources>
