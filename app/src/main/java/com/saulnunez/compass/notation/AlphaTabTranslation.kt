@@ -4,6 +4,7 @@ import alphaTab.Settings
 import alphaTab.collections.DoubleList
 import alphaTab.model.Automation
 import alphaTab.model.Bar
+import alphaTab.model.Clef
 import alphaTab.model.Beat
 import alphaTab.model.KeySignatureType
 import alphaTab.model.MasterBar
@@ -11,6 +12,7 @@ import alphaTab.model.Score
 import alphaTab.model.Staff
 import alphaTab.model.Voice
 import com.saulnunez.compass.domain.Duration
+import com.saulnunez.compass.domain.InstrumentKind
 import com.saulnunez.compass.domain.KeySignature
 import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.Rest
@@ -59,6 +61,10 @@ fun Song.toAlphaTabScore(settings: Settings): Score {
 
 private fun Song.alphaTabBarsFor(track: Track): List<Bar> = measures.mapIndexed { index, measure ->
     Bar().apply {
+        clef = when (track.instrument.kind) {
+            InstrumentKind.GUITAR -> Clef.G2
+            InstrumentKind.BASS -> Clef.F4
+        }
         keySignature = measure.keySignature.toAlphaTab()
         keySignatureType = if (measure.keySignature.isMinor) KeySignatureType.Minor else KeySignatureType.Major
         addVoice(track.alphaTabVoiceFor(index))
@@ -72,6 +78,9 @@ private fun Track.toAlphaTabTrack(): AlphaTabTrack {
     val staff = Staff()
     // Both list strings from the top tablature line (Compass string 1) downwards.
     staff.stringTuning = AlphaTabTuning("", DoubleList(*instrument.tuning.openStrings.map { it.midi.toDouble() }.toDoubleArray()))
+    // Guitar and bass are written an octave above how they sound, so Standard notation shows
+    // them that way (as alphaTab's own file importers do).
+    staff.displayTranspositionPitch = WRITTEN_OCTAVE_UP
     alphaTabTrack.addStaff(staff)
     return alphaTabTrack
 }
@@ -113,3 +122,6 @@ private fun KeySignature.toAlphaTab(): AlphaTabKeySignature = AlphaTabKeySignatu
 
 /** alphaTab's tempo reference code for "beats are quarter notes". */
 private const val QUARTER_NOTE_REFERENCE = 2.0
+
+/** alphaTab's display transposition (in semitones) that writes Notes an octave above their pitch. */
+private const val WRITTEN_OCTAVE_UP = -12.0
