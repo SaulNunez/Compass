@@ -47,16 +47,14 @@ data class InsertMeasure(val at: Int) : Edit {
     override fun applyTo(song: Song): Song {
         require(at in 0..song.measures.size) { "Cannot insert a Measure at ${at + 1}" }
         val inserted = song.measures[(at - 1).coerceAtLeast(0)]
-        return song.copy(
-            measures = song.measures.toMutableList().apply { add(at, inserted) },
-            tracks = song.tracks.map { track ->
-                track.copy(voice = Voice(track.voice.measures.toMutableList().apply { add(at, emptyList()) }))
-            },
-        )
+        return song.insertMeasures(at, listOf(inserted), song.tracks.map { listOf(emptyList()) })
     }
 }
 
-/** Removes Measure [measure] from every Track; what followed it moves up. A Song keeps at least one Measure. */
+/**
+ * Removes Measure [measure] from every Track; what followed it moves up. A Song keeps at least one
+ * Measure. A Section holding the Measure gets shorter, and goes when it was its only Measure.
+ */
 data class DeleteMeasure(val measure: Int) : Edit {
     override fun applyTo(song: Song): Song {
         require(song.measures.size > 1) { "A Song keeps at least one Measure" }
@@ -64,6 +62,14 @@ data class DeleteMeasure(val measure: Int) : Edit {
             measures = song.measures.toMutableList().apply { removeAt(measure) },
             tracks = song.tracks.map { track ->
                 track.copy(voice = Voice(track.voice.measures.toMutableList().apply { removeAt(measure) }))
+            },
+            sections = song.sections.mapNotNull { section ->
+                when {
+                    section.first > measure -> section.copy(first = section.first - 1, last = section.last - 1)
+                    measure !in section -> section
+                    section.first == section.last -> null
+                    else -> section.copy(last = section.last - 1)
+                }
             },
         )
     }
@@ -97,6 +103,91 @@ data class ChangeMeasure(val measure: Int, val settings: Measure) : Edit {
         ChangeKeySignature(measure, settings.keySignature),
         ChangeTempo(measure, settings.tempo),
     ).fold(song) { edited, edit -> edit.applyTo(edited) }
+}
+
+/** Adds [section] to the Song; its Measures must not belong to another Section. */
+data class AddSection(val section: Section) : Edit {
+    override fun applyTo(song: Song): Song = song.copy(sections = (song.sections + section).sortedBy { it.first })
+}
+
+/** Gives the Section at index [section] (in Measure order) a new [name]. */
+data class RenameSection(val section: Int, val name: String) : Edit {
+    override fun applyTo(song: Song): Song =
+        song.copy(sections = song.sections.toMutableList().apply { set(section, get(section).copy(name = name)) })
+}
+
+/** Makes the Section at index [section] span Measures [first] to [last] instead; no other Section may hold them. */
+data class ResizeSection(val section: Int, val first: Int, val last: Int) : Edit {
+    override fun applyTo(song: Song): Song = song.copy(
+        sections = song.sections.toMutableList()
+            .apply { set(section, get(section).copy(first = first, last = last)) }
+            .sortedBy { it.first },
+    )
+}
+
+/** Renames the Section at index [section] and makes it span Measures [first] to [last], in one edit. */
+data class ChangeSection(val section: Int, val name: String, val first: Int, val last: Int) : Edit {
+    override fun applyTo(song: Song): Song =
+        ResizeSection(section, first, last).applyTo(RenameSection(section, name).applyTo(song))
+}
+
+/** Removes the Section at index [section]; its Measures stay. */
+data class RemoveSection(val section: Int) : Edit {
+    override fun applyTo(song: Song): Song = song.copy(sections = song.sections.toMutableList().apply { removeAt(section) })
+}
+
+/**
+ * A copy of some Measures of a Song: their time signatures, key signatures and Tempos, and what
+ * each Track holds in them ([tracks] by Track, then by Measure).
+ */
+data class CopiedMeasures(val measures: List<Measure>, val tracks: List<List<List<VoiceElement>>>) {
+    init {
+        require(measures.isNotEmpty()) { "Nothing copied" }
+        require(tracks.all { it.size == measures.size }) { "Every Track needs each copied Measure" }
+    }
+}
+
+/** Copies Measures [first] to [last] (0-based) of every Track of this Song. */
+fun Song.copyMeasures(first: Int, last: Int): CopiedMeasures = CopiedMeasures(
+    measures = measures.subList(first, last + 1).toList(),
+    tracks = tracks.map { it.voice.measures.subList(first, last + 1).toList() },
+)
+
+/**
+ * Pastes [copied] Measures before Measure [at], in every Track; they keep their own signatures
+ * and Tempo. Sections adjust as for [InsertMeasure].
+ */
+data class PasteMeasures(val at: Int, val copied: CopiedMeasures) : Edit {
+    override fun applyTo(song: Song): Song {
+        require(at in 0..song.measures.size) { "Cannot paste Measures at ${at + 1}" }
+        return song.insertMeasures(at, copied.measures, copied.tracks)
+    }
+}
+
+/**
+ * Inserts [measures] before Measure [at], with [trackMeasures] (what each Track holds in them, by
+ * Track) written into the Tracks. A Section the insertion falls inside grows to take the new
+ * Measures in; one starting at [at] or later moves along. Inserting right before a Section's first
+ * Measure or right after its last leaves them out of it.
+ */
+private fun Song.insertMeasures(at: Int, measures: List<Measure>, trackMeasures: List<List<List<VoiceElement>>>): Song {
+    require(trackMeasures.size == tracks.size && trackMeasures.all { it.size == measures.size }) {
+        "Inserted Measures must have contents for every Track"
+    }
+    val count = measures.size
+    return copy(
+        measures = this.measures.toMutableList().apply { addAll(at, measures) },
+        tracks = tracks.mapIndexed { index, track ->
+            track.copy(voice = Voice(track.voice.measures.toMutableList().apply { addAll(at, trackMeasures[index]) }))
+        },
+        sections = sections.map { section ->
+            when {
+                section.first >= at -> section.copy(first = section.first + count, last = section.last + count)
+                section.last >= at -> section.copy(last = section.last + count)
+                else -> section
+            }
+        },
+    )
 }
 
 /**

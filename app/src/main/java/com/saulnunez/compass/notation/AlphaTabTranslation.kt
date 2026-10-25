@@ -9,6 +9,7 @@ import alphaTab.model.Beat
 import alphaTab.model.KeySignatureType
 import alphaTab.model.MasterBar
 import alphaTab.model.Score
+import alphaTab.model.Section as AlphaTabSection
 import alphaTab.model.Staff
 import alphaTab.model.Voice
 import com.saulnunez.compass.domain.InstrumentKind
@@ -35,8 +36,12 @@ fun Song.toAlphaTabScore(settings: Settings): Score {
     score.artist = artist
 
     var previousTempo: Int? = null
-    measures.forEach { measure ->
+    measures.forEachIndexed { index, measure ->
         val masterBar = MasterBar()
+        // alphaTab writes a Section's name above its first Measure, in Tablature and Standard notation alike.
+        sections.firstOrNull { it.first == index }?.let { section ->
+            masterBar.section = AlphaTabSection().apply { text = section.name }
+        }
         masterBar.timeSignatureNumerator = measure.timeSignature.beats.toDouble()
         masterBar.timeSignatureDenominator = measure.timeSignature.beatUnit.toDouble()
         val bpm = measure.tempo.beatsPerMinute

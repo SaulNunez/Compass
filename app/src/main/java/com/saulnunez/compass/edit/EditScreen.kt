@@ -23,6 +23,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -107,6 +108,7 @@ fun EditScreen(
             HorizontalDivider()
             MeasureStrip(session, onSessionChange)
             MeasureTools(session, onSessionChange)
+            SectionTools(session, onSessionChange)
             MeasureEditor(session)
             DurationBar(session, onSessionChange)
             CursorPad(session, onSessionChange)
@@ -129,12 +131,14 @@ private fun MeasureStrip(session: EditSession, onSessionChange: (EditSession) ->
             val fill = session.song.measureFill(track = 0, measure = index)
             val flagged = fill == MeasureFill.INCOMPLETE || fill == MeasureFill.OVERFULL
             val description = measureDescription(index + 1, fill)
+            // A Section's name leads its first Measure.
+            val sectionName = session.song.sections.firstOrNull { it.first == index }?.let { "${it.name} · " } ?: ""
             FilterChip(
                 selected = index == session.cursor.measure,
                 onClick = { onSessionChange(session.moveToMeasure(index)) },
                 label = {
                     Text(
-                        if (flagged) "${index + 1} !" else "${index + 1}",
+                        sectionName + if (flagged) "${index + 1} !" else "${index + 1}",
                         color = if (flagged) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                     )
                 },
@@ -242,6 +246,141 @@ private fun MeasureSettingsDialog(measureNumber: Int, current: Measure, onApply:
                 enabled = tempo != null && beats != null,
                 onClick = { onApply(Measure(TimeSignature(beats!!, beatUnit), KeySignature.ALL[keyIndex], Tempo(tempo!!))) },
             ) { Text(stringResource(R.string.apply)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+/**
+ * Names, renames, resizes and removes the Section under the cursor, and copies its Measures to
+ * paste before another Measure, in every Track.
+ */
+@Composable
+private fun SectionTools(session: EditSession, onSessionChange: (EditSession) -> Unit) {
+    var addingSection by rememberSaveable { mutableStateOf(false) }
+    var editingSection by rememberSaveable { mutableStateOf(false) }
+    val section = session.sectionAtCursor
+    val measureNumber = session.cursor.measure + 1
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
+    ) {
+        Text(
+            if (section != null) stringResource(R.string.section_at_cursor, section.name) else stringResource(R.string.no_section),
+            style = MaterialTheme.typography.labelMedium,
+        )
+        if (section == null) {
+            OutlinedButton(onClick = { addingSection = true }) { Text(stringResource(R.string.new_section)) }
+        } else {
+            OutlinedButton(onClick = { editingSection = true }) { Text(stringResource(R.string.edit_section)) }
+            OutlinedButton(onClick = { onSessionChange(session.copySection()) }) { Text(stringResource(R.string.copy_section)) }
+        }
+        val pasteDescription = stringResource(R.string.paste_measures_description, measureNumber)
+        OutlinedButton(
+            onClick = { onSessionChange(session.pasteMeasures()) },
+            enabled = session.canPaste,
+            modifier = Modifier.semantics { contentDescription = pasteDescription },
+        ) { Text(stringResource(R.string.paste_measures)) }
+    }
+    if (addingSection) {
+        SectionDialog(
+            title = stringResource(R.string.new_section_title),
+            initialName = "",
+            initialFirst = measureNumber,
+            initialLast = measureNumber,
+            measureCount = session.song.measures.size,
+            canPlace = session::canAddSection,
+            onApply = { name, first, last ->
+                addingSection = false
+                onSessionChange(session.addSection(name, first, last))
+            },
+            onDismiss = { addingSection = false },
+        )
+    }
+    if (editingSection && section != null) {
+        SectionDialog(
+            title = stringResource(R.string.edit_section_title, section.name),
+            initialName = section.name,
+            initialFirst = section.first + 1,
+            initialLast = section.last + 1,
+            measureCount = session.song.measures.size,
+            canPlace = session::canResizeSection,
+            onApply = { name, first, last ->
+                editingSection = false
+                onSessionChange(session.changeSection(name, first, last))
+            },
+            onDismiss = { editingSection = false },
+            onRemove = {
+                editingSection = false
+                onSessionChange(session.removeSection())
+            },
+        )
+    }
+}
+
+/**
+ * Asks for a Section's name and its first and last Measure (numbered from 1 here; [onApply] and
+ * [canPlace] take them 0-based). [onRemove], when given, offers to remove the Section.
+ */
+@Composable
+private fun SectionDialog(
+    title: String,
+    initialName: String,
+    initialFirst: Int,
+    initialLast: Int,
+    measureCount: Int,
+    canPlace: (first: Int, last: Int) -> Boolean,
+    onApply: (name: String, first: Int, last: Int) -> Unit,
+    onDismiss: () -> Unit,
+    onRemove: (() -> Unit)? = null,
+) {
+    var name by rememberSaveable { mutableStateOf(initialName) }
+    var firstText by rememberSaveable { mutableStateOf(initialFirst.toString()) }
+    var lastText by rememberSaveable { mutableStateOf(initialLast.toString()) }
+
+    val first = firstText.toIntOrNull()?.takeIf { it in 1..measureCount }
+    val last = lastText.toIntOrNull()?.takeIf { it in 1..measureCount && (first == null || it >= first) }
+    val overlaps = first != null && last != null && !canPlace(first - 1, last - 1)
+    val canApply = name.isNotBlank() && first != null && last != null && !overlaps
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.field_section_name)) },
+                    isError = name.isBlank(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NumberField(R.string.field_first_measure, firstText, isError = first == null || overlaps, Modifier.weight(1f)) {
+                        firstText = it
+                    }
+                    NumberField(R.string.field_last_measure, lastText, isError = last == null || overlaps, Modifier.weight(1f)) {
+                        lastText = it
+                    }
+                }
+                if (overlaps) {
+                    Text(
+                        stringResource(R.string.section_overlaps),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (onRemove != null) {
+                    TextButton(onClick = onRemove) { Text(stringResource(R.string.remove_section)) }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = canApply, onClick = { onApply(name, first!! - 1, last!! - 1) }) {
+                Text(stringResource(R.string.apply))
+            }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )

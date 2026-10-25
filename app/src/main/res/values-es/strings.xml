@@ -144,4 +144,18 @@
     <string name="measure_settings_title">Compás %1$d</string>
     <string name="measure_settings_hint">Los cambios se aplican a todas las pistas, desde este compás hasta el siguiente cambio.</string>
     <string name="apply">Aplicar</string>
+    <string name="new_section">Nueva sección</string>
+    <string name="edit_section">Editar sección</string>
+    <string name="copy_section">Copiar sección</string>
+    <string name="paste_measures">Pegar compases</string>
+    <string name="paste_measures_description">Pegar los compases copiados antes del compás %1$d, en todas las pistas</string>
+    <string name="no_section">Sin sección</string>
+    <string name="section_at_cursor">Sección: %1$s</string>
+    <string name="new_section_title">Nueva sección</string>
+    <string name="edit_section_title">Sección %1$s</string>
+    <string name="field_section_name">Nombre</string>
+    <string name="field_first_measure">Primer compás</string>
+    <string name="field_last_measure">Último compás</string>
+    <string name="section_overlaps">Estos compases pertenecen a otra sección.</string>
+    <string name="remove_section">Eliminar sección</string>
 </resources>
