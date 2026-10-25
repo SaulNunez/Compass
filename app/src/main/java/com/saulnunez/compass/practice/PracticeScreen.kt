@@ -63,7 +63,8 @@ import kotlin.math.roundToInt
  * Practice mode: reads and plays a Song without any way to change it. The only way to change the
  * Song is the explicit [onEdit] action, which switches to Edit mode. Changes to the [settings]
  * (the Song's Practice settings) go to [onSettingsChange]; [onPlaybackStarted] is called each
- * time Playback starts. The screen stays on. Every Track plays; the views show the Track being read.
+ * time Playback starts. The screen stays on. Every Track plays unless muted or left out of a solo;
+ * the views show the Track being read.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,6 +90,8 @@ fun PracticeScreen(
     // A Loop the Song no longer has Measures for plays nothing different.
     val loopMeasures = settings.loop?.measuresIn(song)
     SideEffect { player.loop = loopMeasures }
+    val silencedTracks = song.tracks.indices.filterNot(settings::isHeard).toSet()
+    SideEffect { player.silencedTracks = silencedTracks }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -151,6 +154,12 @@ fun PracticeScreen(
                         settings = settings,
                         onSettingsChange = onSettingsChange,
                         modifier = Modifier.fillMaxWidth(),
+                    )
+                    TrackMix(
+                        song = song,
+                        settings = settings,
+                        onSettingsChange = onSettingsChange,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     )
                 }
             },

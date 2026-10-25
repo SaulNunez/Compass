@@ -114,6 +114,40 @@ class PlaybackTimelineTest {
         assertEquals(1000.0, timeline.notes[1].lengthMillis, DELTA)
     }
 
+    private fun band(): Song {
+        fun part(fret: Int) = Track("Part $fret", guitar, Voice(listOf(listOf(quarter(fret)))))
+        return song(fourFour(120) to listOf(quarter(0))).let { it.copy(tracks = it.tracks + part(1) + part(2)) }
+    }
+
+    @Test
+    fun `muted Tracks are absent and the others still play`() {
+        val timeline = band().playbackTimeline(PracticeSettings(mutedTracks = setOf(0, 2)))
+
+        assertEquals(listOf(1), timeline.notes.map { it.track })
+    }
+
+    @Test
+    fun `solo leaves only the soloed Tracks`() {
+        val timeline = band().playbackTimeline(PracticeSettings(soloedTracks = setOf(0, 2)))
+
+        assertEquals(listOf(0, 2), timeline.notes.map { it.track })
+    }
+
+    @Test
+    fun `a Track both soloed and muted stays silent`() {
+        val timeline = band().playbackTimeline(PracticeSettings(mutedTracks = setOf(2), soloedTracks = setOf(1, 2)))
+
+        assertEquals(listOf(1), timeline.notes.map { it.track })
+    }
+
+    @Test
+    fun `muting every Track leaves the click`() {
+        val timeline = band().playbackTimeline(PracticeSettings(click = true, mutedTracks = setOf(0, 1, 2)))
+
+        assertEquals(emptyList<TimedNote>(), timeline.notes)
+        assertEquals(4, timeline.clicks.size)
+    }
+
     @Test
     fun `every Note of a Chord plays at once`() {
         val chord = Chord(listOf(Note(1, 0, Duration.HALF), Note(2, 1, Duration.HALF)))

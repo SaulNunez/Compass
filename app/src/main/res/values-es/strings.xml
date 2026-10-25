@@ -223,4 +223,9 @@
     <string name="field_last_measure">Último compás</string>
     <string name="section_overlaps">Estos compases pertenecen a otra sección.</string>
     <string name="remove_section">Eliminar sección</string>
+    <string name="track_mix_heading">Pistas</string>
+    <string name="track_mute">Silenciar</string>
+    <string name="track_solo">Solo</string>
+    <string name="track_mute_description">Silenciar %1$s</string>
+    <string name="track_solo_description">Solo %1$s</string>
 </resources>

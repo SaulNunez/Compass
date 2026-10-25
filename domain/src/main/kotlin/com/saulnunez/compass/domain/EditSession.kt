@@ -192,16 +192,22 @@ class EditSession private constructor(
 
     /**
      * The Practice settings [settings], saved for the Song as it was when this session started,
-     * reconciled with the edits made since: the Track being read is followed as Tracks before it
-     * are added or removed, and dropped (back to the first Track) if it was removed. A Section Loop
-     * follows its Section and goes with it; a Measure-range Loop shifts and shrinks with inserted and
-     * deleted Measures, taking in Measures inserted inside it, and is cleared only when none of its
-     * Measures remain. Undone edits are undone here too.
+     * reconciled with the edits made since: the Track being read and the muted and soloed Tracks
+     * are followed as Tracks before them are added or removed. A removed Track is dropped: its mute
+     * and solo go, and reading it goes back to the first Track. A Section Loop follows its Section
+     * and goes with it; a Measure-range Loop shifts and shrinks with inserted and deleted Measures,
+     * taking in Measures inserted inside it, and is cleared only when none of its Measures remain.
+     * Undone edits are undone here too.
      */
-    fun reconcile(settings: PracticeSettings): PracticeSettings = settings.copy(
-        readTrack = trackOrigins.indexOf(settings.readTrack).coerceAtLeast(0),
-        loop = settings.loop?.let(restructure::reconcile),
-    )
+    fun reconcile(settings: PracticeSettings): PracticeSettings {
+        fun followed(tracks: Set<Int>) = tracks.map(trackOrigins::indexOf).filter { it >= 0 }.toSet()
+        return settings.copy(
+            readTrack = trackOrigins.indexOf(settings.readTrack).coerceAtLeast(0),
+            mutedTracks = followed(settings.mutedTracks),
+            soloedTracks = followed(settings.soloedTracks),
+            loop = settings.loop?.let(restructure::reconcile),
+        )
+    }
 
     /** Whether the Track being edited can be removed: every Song keeps at least one Track. */
     val canRemoveTrack: Boolean get() = song.tracks.size > 1
