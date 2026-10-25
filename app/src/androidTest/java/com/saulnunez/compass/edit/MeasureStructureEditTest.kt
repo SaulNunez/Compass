@@ -12,6 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.saulnunez.compass.R
 import com.saulnunez.compass.domain.EditSession
 import com.saulnunez.compass.domain.KeySignature
+import com.saulnunez.compass.domain.ShownViews
 import com.saulnunez.compass.domain.Tempo
 import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.notation.toAlphaTabScore
@@ -34,7 +35,7 @@ class MeasureStructureEditTest {
     @Test
     fun insertingAndDeletingMeasuresInEditModeReachesTheAlphaTabScore() {
         var session by mutableStateOf(EditSession.start(demoSong))
-        compose.setContent { EditScreen(session, onSessionChange = { session = it }, onDone = {}) }
+        compose.setContent { EditScreen(session, ShownViews.TABLATURE, onSessionChange = { session = it }, onDone = {}) }
         val measures = demoSong.measures.size
 
         compose.onNodeWithText(string(R.string.insert_measure_after)).performClick()

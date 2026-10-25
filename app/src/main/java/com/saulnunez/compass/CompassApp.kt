@@ -220,6 +220,7 @@ fun CompassApp() {
                 var savedSettings by remember(song, initialSettings) { mutableStateOf(initialSettings) }
                 EditScreen(
                     session = session,
+                    shownViews = initialSettings.shownViews,
                     onSessionChange = { next ->
                         val edited = next.song != session.song
                         session = next

@@ -85,12 +85,14 @@ import com.saulnunez.compass.ui.theme.CompassTheme
  * and Techniques into the Tablature of the Track being edited, through [session]. Every action
  * hands the next session to [onSessionChange]; [onDone] switches back to Practice mode. Playback
  * here only plays the Song from the cursor and stops; the tempo percentage, click and count-in
- * are Practice mode's.
+ * are Practice mode's. The Song is shown in Practice mode's [shownViews] (always with the
+ * Tablature being edited), so Standard notation follows every edit.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditScreen(
     session: EditSession,
+    shownViews: ShownViews,
     onSessionChange: (EditSession) -> Unit,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
@@ -128,7 +130,7 @@ fun EditScreen(
             panel = { sideBySide -> EditTools(session, onSessionChange, sideBySide) },
         ) {
             // Rebuilt from the edited Song on every change, so Playback always plays what was just written.
-            NotationView(song, ShownViews.TABLATURE, Modifier.fillMaxSize(), player = player, track = session.track)
+            NotationView(song, shownViews.inEditMode(), Modifier.fillMaxSize(), player = player, track = session.track)
         }
     }
 }
@@ -726,6 +728,6 @@ private fun NoteValue.label(): Int = when (this) {
 @Composable
 private fun EditScreenPreview() {
     CompassTheme {
-        EditScreen(EditSession.start(demoSong).moveToNextBeat(), onSessionChange = {}, onDone = {})
+        EditScreen(EditSession.start(demoSong).moveToNextBeat(), ShownViews.BOTH, onSessionChange = {}, onDone = {})
     }
 }
