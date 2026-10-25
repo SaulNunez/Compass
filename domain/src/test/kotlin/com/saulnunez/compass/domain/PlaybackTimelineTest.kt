@@ -162,6 +162,62 @@ class PlaybackTimelineTest {
     }
 
     @Test
+    fun `a tied Note holds on the Note it is tied to instead of sounding again`() {
+        val song = song(fourFour(120) to listOf(quarter(5), quarter(5).copy(isTied = true), quarter(7)))
+
+        val timeline = song.playbackTimeline(settings())
+
+        // Two tied quarter notes at 120 BPM sound as one Note of a second, then the 7th fret.
+        assertEquals(listOf(5 to 0.0, 7 to 1000.0), timeline.notes.map { it.note.fret to it.startMillis })
+        assertEquals(1000.0, timeline.notes[0].lengthMillis, DELTA)
+    }
+
+    @Test
+    fun `a Note tied across the barline holds into the next Measure, through a chain of ties`() {
+        val whole = Note(string = 1, fret = 3, duration = Duration.WHOLE)
+        val song = song(
+            fourFour(120) to listOf(whole),
+            fourFour(120) to listOf(quarter(3).copy(isTied = true), quarter(3).copy(isTied = true), quarter(8)),
+        )
+
+        val timeline = song.playbackTimeline(settings())
+
+        assertEquals(listOf(whole, quarter(8)), timeline.notes.map { it.note })
+        // 2 s for the whole note and two tied beats of half a second each.
+        assertEquals(3000.0, timeline.notes[0].lengthMillis, DELTA)
+        assertEquals(0, timeline.notes[0].measure)
+    }
+
+    @Test
+    fun `in a Chord only the tied Note holds on, the others sound again`() {
+        val song = song(
+            fourFour(120) to listOf(
+                Chord(listOf(Note(1, 0, Duration.QUARTER), Note(2, 1, Duration.QUARTER))),
+                Chord(listOf(Note(1, 0, Duration.QUARTER, isTied = true), Note(2, 3, Duration.QUARTER))),
+            ),
+        )
+
+        val timeline = song.playbackTimeline(settings())
+
+        assertEquals(
+            listOf(Triple(1, 0.0, 1000.0), Triple(2, 0.0, 500.0), Triple(2, 500.0, 500.0)),
+            timeline.notes.map { Triple(it.note.string, it.startMillis, it.lengthMillis) },
+        )
+    }
+
+    @Test
+    fun `a tied Note is silent when the Note it is tied to was not played`() {
+        val song = song(
+            fourFour(120) to listOf(Note(string = 1, fret = 3, duration = Duration.WHOLE)),
+            fourFour(120) to listOf(quarter(3).copy(isTied = true), quarter(8)),
+        )
+
+        val timeline = song.playbackTimeline(settings(), fromMeasure = 1)
+
+        assertEquals(listOf(8 to 500.0), timeline.notes.map { it.note.fret to it.startMillis })
+    }
+
+    @Test
     fun `the tempo percentage goes from 25 to 150`() {
         assertEquals(25, TempoPercentage(25).percent)
         assertEquals(150, TempoPercentage(150).percent)

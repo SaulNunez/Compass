@@ -1,5 +1,7 @@
 package com.saulnunez.compass.domain
 
+import kotlin.math.abs
+
 /**
  * What Playback sounds and when, in milliseconds from the moment Playback starts.
  * It defines Playback's behaviour; the player is driven to match it.
@@ -16,7 +18,10 @@ data class PlaybackTimeline(
 /** A Measure as played: when it starts, how long it lasts and its Tempo after the tempo percentage. */
 data class TimedMeasure(val measure: Int, val startMillis: Double, val lengthMillis: Double, val beatsPerMinute: Double)
 
-/** A Note of Track [track] in Measure [measure] (both 0-based) as played. */
+/**
+ * A Note of Track [track] in Measure [measure] (both 0-based) as played. [lengthMillis] includes the
+ * Notes tied to it, which never sound by themselves.
+ */
 data class TimedNote(val startMillis: Double, val lengthMillis: Double, val track: Int, val measure: Int, val note: Note)
 
 /** A metronome click on a beat, either of the count-in or of the click track. */
@@ -46,6 +51,8 @@ fun Song.playbackTimeline(settings: PracticeSettings, fromMeasure: Int = 0, pass
     val timedMeasures = mutableListOf<TimedMeasure>()
     val notes = mutableListOf<TimedNote>()
     val clicks = mutableListOf<Click>()
+    // Where in [notes] each Track's string last sounded, for tied Notes to hold on.
+    val lastOnString = mutableMapOf<Pair<Int, Int>, Int>()
 
     var measureStart = 0.0
     if (settings.countIn) {
@@ -68,7 +75,22 @@ fun Song.playbackTimeline(settings: PracticeSettings, fromMeasure: Int = 0, pass
                 // A Chord's Notes all start together.
                 element.notes.forEach { note ->
                     val start = measureStart + timing.millis(ticksBefore)
-                    notes += TimedNote(start, timing.millis(ticks), trackIndex, index, note)
+                    val length = timing.millis(ticks)
+                    val string = trackIndex to note.string
+                    if (note.isTied) {
+                        // A tied Note never sounds by itself: it lengthens the Note it is tied to when
+                        // that Note has just sounded, and is silent otherwise (Playback starting on it,
+                        // or a Loop going back to it), as alphaTab plays it.
+                        val held = lastOnString[string]?.let { notes[it] }
+                        if (held != null && abs(held.startMillis + held.lengthMillis - start) < TIE_TOLERANCE_MILLIS) {
+                            notes[lastOnString.getValue(string)] = held.copy(lengthMillis = held.lengthMillis + length)
+                        } else {
+                            lastOnString.remove(string)
+                        }
+                    } else {
+                        lastOnString[string] = notes.size
+                        notes += TimedNote(start, length, trackIndex, index, note)
+                    }
                 }
                 ticksBefore += ticks
             }
@@ -91,6 +113,9 @@ private class MeasureTiming(val signature: TimeSignature, val beatsPerMinute: Do
 
 private fun timing(measure: Measure, settings: PracticeSettings) =
     MeasureTiming(measure.timeSignature, settings.tempoPercentage.scale(measure.tempo))
+
+/** Rounding in the millisecond arithmetic, far below any Duration. */
+private const val TIE_TOLERANCE_MILLIS = 0.001
 
 private const val MILLIS_PER_MINUTE = 60_000.0
 private const val TICKS_PER_QUARTER = TICKS_PER_WHOLE / 4
