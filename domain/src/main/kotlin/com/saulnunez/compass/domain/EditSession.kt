@@ -1,0 +1,161 @@
+package com.saulnunez.compass.domain
+
+/** Where Edit mode writes next: a Measure, a beat within it, and a string (all as in [Edit]; strings from 1). */
+data class Cursor(val measure: Int, val beat: Int, val string: Int)
+
+/**
+ * One editing session of a Song in Edit mode: the Song as edited so far, the cursor, the
+ * chosen Duration and the undo/redo history of the session's edits. Immutable; every action
+ * returns the next session. Every change to the Song goes through an [Edit].
+ */
+class EditSession private constructor(
+    val song: Song,
+    val cursor: Cursor,
+    /** The Duration the next written Note or Rest gets; follows the element under the cursor. */
+    val duration: Duration,
+    private val track: Int,
+    /** The digit just typed, when another digit typed straight after it can make a two-digit fret. */
+    private val pendingDigit: Int? = null,
+    /** What to go back to on undo, most recent last. */
+    private val undoStack: List<Snapshot> = emptyList(),
+    private val redoStack: List<Snapshot> = emptyList(),
+) {
+
+    /** The Song and where the cursor was, before or after an edit. */
+    private data class Snapshot(val song: Song, val cursor: Cursor)
+
+    val canUndo: Boolean get() = undoStack.isNotEmpty()
+    val canRedo: Boolean get() = redoStack.isNotEmpty()
+
+    /** Goes back to the Song before the latest edit, with the cursor where that edit was made. */
+    fun undo(): EditSession {
+        val previous = undoStack.lastOrNull() ?: return this
+        return copy(song = previous.song, undoStack = undoStack.dropLast(1), redoStack = redoStack + Snapshot(song, cursor))
+            .moveTo(previous.cursor)
+    }
+
+    /** Brings back the latest undone edit. */
+    fun redo(): EditSession {
+        val next = redoStack.lastOrNull() ?: return this
+        return copy(song = next.song, undoStack = undoStack + Snapshot(song, cursor), redoStack = redoStack.dropLast(1))
+            .moveTo(next.cursor)
+    }
+
+    /**
+     * Writes [digit] as the fret of a Note on the cursor's string. A digit typed straight after
+     * another one makes a two-digit fret with it (1 then 2 is fret 12), up to [HIGHEST_FRET].
+     */
+    fun typeDigit(digit: Int): EditSession {
+        require(digit in 0..9) { "Not a digit: $digit" }
+        val twoDigitFret = pendingDigit?.let { it * 10 + digit }?.takeIf { it <= HIGHEST_FRET }
+        val fret = twoDigitFret ?: digit
+        // The second digit of a two-digit fret amends the first, so both are undone together.
+        val note = Note(cursor.string, fret, duration)
+        val written = apply(WriteElement(track, cursor.measure, cursor.beat, note), isNewEdit = twoDigitFret == null)
+        val canTakeAnotherDigit = twoDigitFret == null && fret != 0 && fret * 10 <= HIGHEST_FRET
+        return written.copy(pendingDigit = if (canTakeAnotherDigit) fret else null)
+    }
+
+    /**
+     * Uses [value] from now on, keeping the dot and triplet. On a Note or Rest it changes that
+     * element's Duration; on the free beat after the last element it applies to what is written next.
+     */
+    fun chooseNoteValue(value: NoteValue): EditSession = chooseDuration(duration.copy(value = value))
+
+    /** Dots or undots the chosen Duration, like [chooseNoteValue]. */
+    fun toggleDot(): EditSession = chooseDuration(duration.copy(isDotted = !duration.isDotted))
+
+    /** Makes the chosen Duration a triplet or not, like [chooseNoteValue]. */
+    fun toggleTriplet(): EditSession = chooseDuration(duration.copy(isTriplet = !duration.isTriplet))
+
+    /** Writes a Rest at the cursor, replacing the Note there but keeping its Duration. */
+    fun writeRest(): EditSession = apply(WriteElement(track, cursor.measure, cursor.beat, Rest(duration)))
+
+    /** Removes the Note or Rest under the cursor; the cursor stays on the beat that moves up. */
+    fun delete(): EditSession {
+        if (elementAtCursor == null) return this
+        return apply(DeleteElement(track, cursor.measure, cursor.beat)).let { it.moveTo(it.cursor) }
+    }
+
+    private fun chooseDuration(chosen: Duration): EditSession =
+        if (elementAtCursor != null) {
+            apply(ChangeDuration(track, cursor.measure, cursor.beat, chosen)).copy(duration = chosen)
+        } else {
+            copy(duration = chosen)
+        }
+
+    fun moveToNextBeat(): EditSession = when {
+        cursor.beat < lastBeat(cursor.measure) -> moveTo(cursor.copy(beat = cursor.beat + 1))
+        cursor.measure < song.measures.lastIndex -> moveTo(cursor.copy(measure = cursor.measure + 1, beat = 0))
+        else -> moveTo(cursor)
+    }
+
+    fun moveToPreviousBeat(): EditSession = when {
+        cursor.beat > 0 -> moveTo(cursor.copy(beat = cursor.beat - 1))
+        cursor.measure > 0 -> moveTo(cursor.copy(measure = cursor.measure - 1, beat = lastBeat(cursor.measure - 1)))
+        else -> moveTo(cursor)
+    }
+
+    fun moveToNextMeasure(): EditSession = moveToMeasure(cursor.measure + 1)
+
+    fun moveToPreviousMeasure(): EditSession = moveToMeasure(cursor.measure - 1)
+
+    /** To the first beat of Measure [measure] (0-based), or the nearest Measure there is. */
+    fun moveToMeasure(measure: Int): EditSession =
+        moveTo(cursor.copy(measure = measure.coerceIn(song.measures.indices), beat = 0))
+
+    /** Towards string 1, the top line of the Tablature. */
+    fun moveToStringAbove(): EditSession = moveTo(cursor.copy(string = (cursor.string - 1).coerceAtLeast(1)))
+
+    fun moveToStringBelow(): EditSession =
+        moveTo(cursor.copy(string = (cursor.string + 1).coerceAtMost(song.tracks[track].instrument.stringCount)))
+
+    /** The Note or Rest under the cursor, or null on the free beat after the last one. */
+    val elementAtCursor: VoiceElement?
+        get() = elementsOf(cursor.measure).getOrNull(cursor.beat)
+
+    private fun moveTo(target: Cursor): EditSession {
+        val element = elementsOf(target.measure).getOrNull(target.beat)
+        return copy(cursor = target, duration = element?.duration ?: duration)
+    }
+
+    private fun elementsOf(measure: Int) = song.tracks[track].voice.measures[measure]
+
+    /** The last beat the cursor can reach: one past the last element, unless the Measure has no room left. */
+    private fun lastBeat(measure: Int): Int {
+        val size = elementsOf(measure).size
+        val hasRoom = song.measureFill(track, measure) in setOf(MeasureFill.UNWRITTEN, MeasureFill.INCOMPLETE)
+        return if (hasRoom) size else size - 1
+    }
+
+    private fun apply(edit: Edit, isNewEdit: Boolean = true): EditSession {
+        val edited = edit.applyTo(song)
+        if (edited == song) return copy()
+        return copy(
+            song = edited,
+            undoStack = if (isNewEdit) undoStack + Snapshot(song, cursor) else undoStack,
+            redoStack = emptyList(),
+        )
+    }
+
+    private fun copy(
+        song: Song = this.song,
+        cursor: Cursor = this.cursor,
+        duration: Duration = this.duration,
+        pendingDigit: Int? = null,
+        undoStack: List<Snapshot> = this.undoStack,
+        redoStack: List<Snapshot> = this.redoStack,
+    ) = EditSession(song, cursor, duration, track, pendingDigit, undoStack, redoStack)
+
+    companion object {
+        /** Starts editing the Track at index [track] of [song], with the cursor on its first beat and top string. */
+        fun start(song: Song, track: Int = 0): EditSession {
+            require(track in song.tracks.indices) { "No Track $track" }
+            require(song.measures.isNotEmpty()) { "A Song needs a Measure to edit" }
+            return EditSession(song, Cursor(measure = 0, beat = 0, string = 1), Duration.QUARTER, track)
+        }
+    }
+}
+
+/** The highest fret the number pad accepts. */
+const val HIGHEST_FRET = 24

@@ -5,11 +5,13 @@ import com.saulnunez.compass.domain.InstrumentKind
 import com.saulnunez.compass.domain.KeySignature
 import com.saulnunez.compass.domain.Measure
 import com.saulnunez.compass.domain.Note
+import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Rest
 import com.saulnunez.compass.domain.SongId
 import com.saulnunez.compass.domain.Tempo
 import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.domain.TuningPreset
+import com.saulnunez.compass.domain.Voice
 import com.saulnunez.compass.domain.newSong
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -32,7 +34,26 @@ class SongFormatTest {
     }
 
     @Test
-    fun `a version 1 document keeps loading whatever the domain types are renamed to`() {
+    fun `dotted and triplet Durations survive a save and load`() {
+        val dotted = Duration(NoteValue.QUARTER, isDotted = true)
+        val triplet = Duration(NoteValue.EIGHTH, isTriplet = true)
+        val written = song.copy(
+            tracks = song.tracks.map { track ->
+                track.copy(
+                    voice = Voice(
+                        track.voice.measures.mapIndexed { index, elements ->
+                            if (index == 0) listOf(Note(2, 12, dotted), Rest(triplet), Note(6, 0, Duration(NoteValue.HALF, true, true))) else elements
+                        },
+                    ),
+                )
+            },
+        )
+
+        assertEquals(written, SongFormat.decode(SongFormat.encode(written)))
+    }
+
+    @Test
+    fun `a version 1 document is upgraded on load`() {
         val versionOne = """
             {
               "formatVersion": 1,
@@ -73,7 +94,7 @@ class SongFormatTest {
 
     @Test
     fun `a document from a newer Compass is refused`() {
-        val fromTheFuture = SongFormat.encode(song).replace("\"formatVersion\":1", "\"formatVersion\":99")
+        val fromTheFuture = SongFormat.encode(song).replace(Regex("\"formatVersion\":\\d+"), "\"formatVersion\":99")
 
         val error = assertThrows(UnsupportedSongFormatException::class.java) { SongFormat.decode(fromTheFuture) }
         assertEquals(99, error.formatVersion)

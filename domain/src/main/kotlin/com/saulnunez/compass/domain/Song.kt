@@ -68,3 +68,30 @@ fun newSong(
     measures = List(NEW_SONG_MEASURE_COUNT) { startingMeasure },
     tracks = listOf(Track(trackName, instrument, Voice(List(NEW_SONG_MEASURE_COUNT) { emptyList() }))),
 )
+
+/** How much of a Measure's time signature a Track has written. */
+enum class MeasureFill {
+    /** Nothing written yet. */
+    UNWRITTEN,
+
+    /** Shorter than the time signature. */
+    INCOMPLETE,
+    FULL,
+
+    /** Longer than the time signature. */
+    OVERFULL,
+}
+
+/** How much of Measure [measure] (0-based) the Track at index [track] has filled. */
+fun Song.measureFill(track: Int, measure: Int): MeasureFill {
+    val elements = tracks[track].voice.measures[measure]
+    if (elements.isEmpty()) return MeasureFill.UNWRITTEN
+    val written = elements.sumOf { it.duration.ticks }
+    val signature = measures[measure].timeSignature
+    val required = TICKS_PER_WHOLE * signature.beats / signature.beatUnit
+    return when {
+        written < required -> MeasureFill.INCOMPLETE
+        written > required -> MeasureFill.OVERFULL
+        else -> MeasureFill.FULL
+    }
+}
