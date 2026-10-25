@@ -8,14 +8,22 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.io.FilterOutputStream
+import java.io.InputStream
+import java.io.OutputStream
 import java.time.Instant
+import java.util.UUID
 
 /**
  * Keeps each Song as one versioned JSON document under [root], plus a Library index
  * so the Library can be listed without loading every Song (ADR-0002).
  * Blocking file IO: call it off the main thread.
  */
-class SongStore(private val root: File) {
+class SongStore(
+    private val root: File,
+    /** Makes the id for a Song added as a copy. */
+    private val newSongId: () -> SongId = { SongId(UUID.randomUUID().toString()) },
+) {
 
     fun save(song: Song) {
         val folder = songFolder(song.id).apply { mkdirs() }
@@ -34,10 +42,66 @@ class SongStore(private val root: File) {
         return SongFormat.decode(file.readText())
     }
 
+    private fun loadOrNull(id: SongId): Song? = runCatching { load(id) }.getOrNull()
+
     /** Removes the Song and everything kept alongside it, such as its Practice settings. */
     fun delete(id: SongId) {
         writeIndex(indexEntries().without(id))
         songFolder(id).deleteRecursively()
+    }
+
+    /**
+     * Adds [song] to the Library without ever overwriting a Song already there.
+     * Backup restore and Song file import both go through here.
+     */
+    fun add(song: Song): AddResult = add(song, companions = emptyMap())
+
+    /** Like [add], also writing [companions] (files kept beside the Song, such as Practice settings) when it is added. */
+    private fun add(song: Song, companions: Map<String, ByteArray>): AddResult {
+        identicalSongId(song)?.let { return AddResult.AlreadyPresent(it) }
+
+        // Any folder already using the id, even one whose Song can't be read, is left alone.
+        val isNew = !songFolder(song.id).exists()
+        val id = if (isNew) song.id else generateSequence(newSongId).first { !songFolder(it).exists() }
+        val folder = songFolder(id).apply { mkdirs() }
+        // The document goes last: a folder without one is ignored, so a crash never adds half a Song.
+        companions.forEach { (name, bytes) -> File(folder, name).writeAtomically(bytes) }
+        save(song.copy(id = id))
+        return if (isNew) AddResult.Added(id) else AddResult.AddedAsCopy(id)
+    }
+
+    /**
+     * The Song in the Library that [song] would duplicate: the one with its id if unchanged, or a copy
+     * of it added earlier (a copy keeps the title and artist, so only those Songs need loading).
+     */
+    private fun identicalSongId(song: Song): SongId? {
+        if (loadOrNull(song.id) == song) return song.id
+        return indexEntries()
+            .filter { it.title == song.title && it.artist == song.artist }
+            .map { SongId(it.id) }
+            .firstOrNull { loadOrNull(it) == song.copy(id = it) }
+    }
+
+    /** Writes the whole Library to [output] as a Backup zip. Does not close [output]. */
+    fun backUp(output: OutputStream) {
+        val folders = songsFolder.listFiles { file -> file.isDirectory }.orEmpty().associate { folder ->
+            folder.name to folder.listFiles { file -> file.isFile && !file.name.endsWith(".tmp") }.orEmpty()
+                .associate { it.name to it.readBytes() }
+        }
+        writeBackup(folders, NonClosingOutputStream(output))
+    }
+
+    /**
+     * Adds every Song in the Backup read from [input] to the Library by the rules of [add], then closes [input].
+     * @throws NotABackupException if [input] is not a Compass Backup.
+     */
+    fun restore(input: InputStream): RestoreReport {
+        val results = readBackup(input).map { (_, files) ->
+            val document = files[SONG_DOCUMENT] ?: return@map null
+            val song = runCatching { SongFormat.decode(document.decodeToString()) }.getOrNull() ?: return@map null
+            add(song, files - SONG_DOCUMENT)
+        }
+        return RestoreReport(results.filterNotNull(), unreadable = results.count { it == null })
     }
 
     /** One folder per Song holds its document and its Practice settings, so deleting it removes both. */
@@ -71,6 +135,27 @@ class SongStore(private val root: File) {
     }
 }
 
+/** What [SongStore.add] did with a Song; [id] is where that Song now is in the Library. */
+sealed interface AddResult {
+    val id: SongId
+
+    /** The Song was new to the Library. */
+    data class Added(override val id: SongId) : AddResult
+
+    /** An identical Song was already in the Library, so nothing changed. */
+    data class AlreadyPresent(override val id: SongId) : AddResult
+
+    /** A different version of the Song was already in the Library, so this one was added beside it under a new id. */
+    data class AddedAsCopy(override val id: SongId) : AddResult
+}
+
+/** What restoring a Backup did with each Song in it. */
+data class RestoreReport(val results: List<AddResult>, val unreadable: Int) {
+    val added get() = results.count { it is AddResult.Added }
+    val addedAsCopies get() = results.count { it is AddResult.AddedAsCopy }
+    val alreadyPresent get() = results.count { it is AddResult.AlreadyPresent }
+}
+
 class SongNotFoundException(id: SongId) : NoSuchElementException("No Song with id ${id.value}")
 
 @Serializable
@@ -84,10 +169,18 @@ private val indexJson = Json
 private val indexSerializer = ListSerializer(IndexEntry.serializer())
 
 /** Writes to a temporary file first so a crash never leaves a half-written file behind. */
-internal fun File.writeAtomically(text: String) {
+internal fun File.writeAtomically(text: String) = writeAtomically(text.toByteArray())
+
+internal fun File.writeAtomically(bytes: ByteArray) {
     val temporary = File(parentFile, "$name.tmp")
-    temporary.writeText(text)
+    temporary.writeBytes(bytes)
     check(temporary.renameTo(this)) { "Could not replace $this" }
+}
+
+/** Lets a zip be finished without closing the caller's stream. */
+private class NonClosingOutputStream(output: OutputStream) : FilterOutputStream(output) {
+    override fun write(b: ByteArray, off: Int, len: Int) = out.write(b, off, len)
+    override fun close() = flush()
 }
 
 private const val SONGS_FOLDER = "songs"

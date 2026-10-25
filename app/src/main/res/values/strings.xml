@@ -21,6 +21,21 @@
     <string name="delete_song_title">Delete “%1$s”?</string>
     <string name="delete_song_message">This removes the Song and its practice settings. It can’t be undone.</string>
 
+
+    <!-- Backup -->
+    <string name="backup_menu">Backup</string>
+    <string name="backup_create">Back up Library</string>
+    <string name="backup_restore">Restore a Backup</string>
+    <!-- Suggested file name for a new Backup; %1$s is today’s date, e.g. 2026-10-25. -->
+    <string name="backup_file_name">compass-backup-%1$s.zip</string>
+    <string name="backup_done">Library backed up.</string>
+    <string name="backup_failed">Couldn’t write the Backup.</string>
+    <!-- %1$d Songs added, %2$d changed Songs added as copies, %3$d Songs skipped because they were already there. -->
+    <string name="restore_done">Backup restored. New: %1$d · Copies of changed Songs: %2$d · Already in your Library: %3$d</string>
+    <!-- %1$d is how many Songs in the Backup could not be read. -->
+    <string name="restore_unreadable">Couldn’t read (damaged or from a newer Compass): %1$d</string>
+    <string name="restore_not_a_backup">That file isn’t a Compass Backup, or it’s damaged.</string>
+    <string name="restore_failed">Couldn’t read the Backup.</string>
     <!-- New Song -->
     <string name="new_song_title">New Song</string>
     <string name="field_title">Title</string>
