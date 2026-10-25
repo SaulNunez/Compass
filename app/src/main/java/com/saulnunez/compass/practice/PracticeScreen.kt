@@ -1,11 +1,6 @@
 package com.saulnunez.compass.practice
 
-import alphaTab.AlphaTabView
-import alphaTab.PlayerMode
-import alphaTab.Settings
-import alphaTab.model.Score
 import androidx.annotation.StringRes
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,33 +12,31 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import com.saulnunez.compass.R
 import com.saulnunez.compass.domain.ShownViews
 import com.saulnunez.compass.domain.Song
-import com.saulnunez.compass.notation.show
-import com.saulnunez.compass.notation.toAlphaTabScore
+import com.saulnunez.compass.notation.NotationView
 import com.saulnunez.compass.ui.BackToLibraryButton
 import com.saulnunez.compass.ui.theme.CompassTheme
 
 /**
- * Practice mode: reads a Song without any way to change it.
+ * Practice mode: reads a Song without any way to change it. The only way to change the Song
+ * is the explicit [onEdit] action, which switches to Edit mode.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PracticeScreen(song: Song, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun PracticeScreen(song: Song, onBack: () -> Unit, onEdit: () -> Unit, modifier: Modifier = Modifier) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -62,6 +55,7 @@ fun PracticeScreen(song: Song, onBack: () -> Unit, modifier: Modifier = Modifier
                     }
                 },
                 navigationIcon = { BackToLibraryButton(onBack) },
+                actions = { TextButton(onClick = onEdit) { Text(stringResource(R.string.enter_edit_mode)) } },
             )
         },
     ) { innerPadding ->
@@ -101,49 +95,10 @@ private fun ShownViews.label(): Int = when (this) {
     ShownViews.BOTH -> R.string.view_both
 }
 
-/** What the alphaTab view last drew, so recomposition only re-renders what changed. */
-private data class Drawn(val score: Score, val views: ShownViews)
-
-/** Draws the Song's first Track in the [shownViews], as wrapped lines that scroll vertically. */
-@Composable
-private fun NotationView(song: Song, shownViews: ShownViews, modifier: Modifier = Modifier) {
-    // alphaTab's native view can't run in the Compose preview.
-    if (LocalInspectionMode.current) {
-        Box(modifier)
-        return
-    }
-
-    val settings = remember {
-        Settings().apply {
-            player.playerMode = PlayerMode.Disabled
-        }
-    }
-    val score = remember(song) { song.toAlphaTabScore(settings) }
-    AndroidView(
-        modifier = modifier,
-        factory = { context -> AlphaTabView(context, null).apply { this.settings = settings } },
-        update = { view ->
-            // update runs on every recomposition; only re-render what changed.
-            val drawn = view.tag as Drawn?
-            if (drawn?.views != shownViews) {
-                settings.show(shownViews)
-                // Re-applying the settings re-renders whatever Score the view holds.
-                view.settings = settings
-            }
-            if (drawn?.score !== score) {
-                // Setting tracks (rather than calling renderScore) lets alphaTab wait until the
-                // view is visible and measured; rendering earlier is skipped at width 0.
-                view.tracks = listOf(score.tracks[0])
-            }
-            view.tag = Drawn(score, shownViews)
-        },
-    )
-}
-
 @Preview(showBackground = true)
 @Composable
 private fun PracticeScreenPreview() {
     CompassTheme {
-        PracticeScreen(demoSong, onBack = {})
+        PracticeScreen(demoSong, onBack = {}, onEdit = {})
     }
 }

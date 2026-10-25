@@ -11,10 +11,10 @@ import alphaTab.model.MasterBar
 import alphaTab.model.Score
 import alphaTab.model.Staff
 import alphaTab.model.Voice
-import com.saulnunez.compass.domain.Duration
 import com.saulnunez.compass.domain.InstrumentKind
 import com.saulnunez.compass.domain.KeySignature
 import com.saulnunez.compass.domain.Note
+import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Rest
 import com.saulnunez.compass.domain.Song
 import com.saulnunez.compass.domain.Track
@@ -93,7 +93,13 @@ private fun Track.alphaTabVoiceFor(measureIndex: Int): Voice {
     }
     elements.forEach { element ->
         val beat = Beat()
-        beat.duration = element.duration.toAlphaTab()
+        beat.duration = element.duration.value.toAlphaTab()
+        if (element.duration.isDotted) beat.dots = 1.0
+        if (element.duration.isTriplet) {
+            // Three in the time of two.
+            beat.tupletNumerator = 3.0
+            beat.tupletDenominator = 2.0
+        }
         when (element) {
             is Note -> beat.addNote(
                 AlphaTabNote().apply {
@@ -109,13 +115,13 @@ private fun Track.alphaTabVoiceFor(measureIndex: Int): Voice {
     return alphaTabVoice
 }
 
-private fun Duration.toAlphaTab(): AlphaTabDuration = when (this) {
-    Duration.WHOLE -> AlphaTabDuration.Whole
-    Duration.HALF -> AlphaTabDuration.Half
-    Duration.QUARTER -> AlphaTabDuration.Quarter
-    Duration.EIGHTH -> AlphaTabDuration.Eighth
-    Duration.SIXTEENTH -> AlphaTabDuration.Sixteenth
-    Duration.THIRTY_SECOND -> AlphaTabDuration.ThirtySecond
+private fun NoteValue.toAlphaTab(): AlphaTabDuration = when (this) {
+    NoteValue.WHOLE -> AlphaTabDuration.Whole
+    NoteValue.HALF -> AlphaTabDuration.Half
+    NoteValue.QUARTER -> AlphaTabDuration.Quarter
+    NoteValue.EIGHTH -> AlphaTabDuration.Eighth
+    NoteValue.SIXTEENTH -> AlphaTabDuration.Sixteenth
+    NoteValue.THIRTY_SECOND -> AlphaTabDuration.ThirtySecond
 }
 
 private fun KeySignature.toAlphaTab(): AlphaTabKeySignature = AlphaTabKeySignature.fromValue(fifths.toDouble())

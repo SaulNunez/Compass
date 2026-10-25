@@ -11,6 +11,38 @@
     <!-- Both Tablature and Standard notation, stacked. -->
     <string name="view_both">Both</string>
     <string name="song_cannot_open">This Song can’t be opened. It may be damaged or made with a newer version of Compass.</string>
+    <string name="song_cannot_save">This change couldn’t be saved.</string>
+
+    <!-- Edit mode -->
+    <!-- The explicit action in Practice mode that switches to Edit mode. -->
+    <string name="enter_edit_mode">Edit</string>
+    <!-- Leaves Edit mode and returns to Practice mode. -->
+    <string name="leave_edit_mode">Done</string>
+    <string name="edit_mode">Edit mode</string>
+    <string name="undo">Undo</string>
+    <string name="redo">Redo</string>
+    <!-- %1$d is the Measure number. -->
+    <string name="measure_number">Measure %1$d</string>
+    <string name="measure_incomplete">Measure %1$d is incomplete</string>
+    <string name="measure_overfull">Measure %1$d is too long for its time signature</string>
+    <string name="note_value_whole">Whole note</string>
+    <string name="note_value_half">Half note</string>
+    <string name="note_value_quarter">Quarter note</string>
+    <string name="note_value_eighth">Eighth note</string>
+    <string name="note_value_sixteenth">Sixteenth note</string>
+    <string name="note_value_thirty_second">Thirty-second note</string>
+    <string name="dotted">Dotted</string>
+    <string name="triplet">Triplet</string>
+    <string name="rest">Rest</string>
+    <!-- Marks a Rest in the small Measure grid; keep it short. -->
+    <string name="rest_short">R</string>
+    <string name="cursor_previous_measure">Previous Measure</string>
+    <string name="cursor_next_measure">Next Measure</string>
+    <string name="cursor_previous_beat">Previous beat</string>
+    <string name="cursor_next_beat">Next beat</string>
+    <string name="cursor_string_above">String above</string>
+    <string name="cursor_string_below">String below</string>
+    <string name="fret_pad">Fret number pad</string>
 
     <!-- Library -->
     <string name="library_title">Library</string>

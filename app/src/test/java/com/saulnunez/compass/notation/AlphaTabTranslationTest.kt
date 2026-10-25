@@ -7,6 +7,7 @@ import com.saulnunez.compass.domain.InstrumentKind
 import com.saulnunez.compass.domain.KeySignature
 import com.saulnunez.compass.domain.Measure
 import com.saulnunez.compass.domain.Note
+import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Pitch
 import com.saulnunez.compass.domain.Rest
 import com.saulnunez.compass.domain.Song
@@ -18,6 +19,7 @@ import com.saulnunez.compass.domain.Tuning
 import com.saulnunez.compass.domain.Voice
 import alphaTab.model.Clef
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import alphaTab.model.Duration as AlphaTabDuration
@@ -47,7 +49,13 @@ class AlphaTabTranslationTest {
                             Note(string = 6, fret = 3, duration = Duration.QUARTER),
                             Rest(Duration.HALF),
                         ),
-                        listOf(Note(string = 3, fret = 12, duration = Duration.HALF), Rest(Duration.QUARTER)),
+                        listOf(
+                            Note(string = 3, fret = 12, duration = Duration(NoteValue.QUARTER, isDotted = true)),
+                            Note(string = 3, fret = 10, duration = Duration(NoteValue.EIGHTH, isTriplet = true)),
+                            Note(string = 3, fret = 9, duration = Duration(NoteValue.EIGHTH, isTriplet = true)),
+                            Rest(Duration(NoteValue.EIGHTH, isTriplet = true)),
+                            Rest(Duration.EIGHTH),
+                        ),
                     ),
                 ),
             ),
@@ -156,5 +164,23 @@ class AlphaTabTranslationTest {
             assertEquals(AlphaTabKeySignature.C, bars[0].keySignature)
             assertEquals(AlphaTabKeySignature.G, bars[1].keySignature)
         }
+    }
+
+    @Test
+    fun `dotted Durations and triplets carry over`() {
+        val beats = score.tracks[0].staves[0].bars[1].voices[0].beats
+
+        assertEquals(AlphaTabDuration.Quarter, beats[0].duration)
+        assertEquals(1, beats[0].dots.toInt())
+        assertFalse(beats[0].hasTuplet)
+
+        (1..3).forEach { index ->
+            assertEquals(AlphaTabDuration.Eighth, beats[index].duration)
+            assertEquals(0, beats[index].dots.toInt())
+            assertEquals(3, beats[index].tupletNumerator.toInt())
+            assertEquals(2, beats[index].tupletDenominator.toInt())
+        }
+        assertTrue(beats[3].isRest)
+        assertFalse(beats[4].hasTuplet)
     }
 }

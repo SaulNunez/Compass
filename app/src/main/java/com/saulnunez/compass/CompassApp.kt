@@ -1,5 +1,6 @@
 package com.saulnunez.compass
 
+import android.content.Context
 import android.content.res.Resources
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -17,9 +18,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import com.saulnunez.compass.domain.EditSession
 import com.saulnunez.compass.domain.Library
 import com.saulnunez.compass.domain.Song
 import com.saulnunez.compass.domain.SongId
+import com.saulnunez.compass.edit.EditScreen
 import com.saulnunez.compass.library.LibraryScreen
 import com.saulnunez.compass.library.NewSongScreen
 import com.saulnunez.compass.practice.PracticeScreen
@@ -28,15 +31,18 @@ import com.saulnunez.compass.storage.RestoreReport
 import com.saulnunez.compass.storage.SongStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.LocalDate
 
-/** Where the app is: the Library, creating a Song, or a Song open in Practice mode. */
+/** Where the app is: the Library, creating a Song, or a Song open in Practice mode or Edit mode. */
 private sealed interface Destination {
     data object Library : Destination
     data object NewSong : Destination
     data class Practice(val songId: SongId) : Destination
+    data class Edit(val songId: SongId) : Destination
 }
 
 @Composable
@@ -44,6 +50,8 @@ fun CompassApp() {
     val context = LocalContext.current
     val resources = LocalResources.current
     val store = remember { SongStore(File(context.filesDir, "library")) }
+    // Everything that touches the store takes turns, in order, so nothing reads a Song while an edit is still being saved.
+    val storeLock = remember { Mutex() }
     val scope = rememberCoroutineScope()
 
     // Saved as a plain string so the current screen survives rotation and process death.
@@ -57,8 +65,10 @@ fun CompassApp() {
     val backUp = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(BACKUP_MIME_TYPE)) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
-            val written = withContext(Dispatchers.IO) {
-                runCatching { context.contentResolver.openOutputStream(uri)!!.use(store::backUp) }
+            val written = storeLock.withLock {
+                withContext(Dispatchers.IO) {
+                    runCatching { context.contentResolver.openOutputStream(uri)!!.use(store::backUp) }
+                }
             }
             showMessage(resources.getString(if (written.isSuccess) R.string.backup_done else R.string.backup_failed))
         }
@@ -66,8 +76,10 @@ fun CompassApp() {
     val restore = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
-            val report = withContext(Dispatchers.IO) {
-                runCatching { store.restore(context.contentResolver.openInputStream(uri)!!) }
+            val report = storeLock.withLock {
+                withContext(Dispatchers.IO) {
+                    runCatching { store.restore(context.contentResolver.openInputStream(uri)!!) }
+                }
             }
             reloads++
             showMessage(
@@ -84,7 +96,7 @@ fun CompassApp() {
     when (destination) {
         Destination.Library -> {
             var library by remember { mutableStateOf<Library?>(null) }
-            LaunchedEffect(reloads) { library = withContext(Dispatchers.IO) { store.library() } }
+            LaunchedEffect(reloads) { library = storeLock.withLock { withContext(Dispatchers.IO) { store.library() } } }
 
             LibraryScreen(
                 library = library,
@@ -94,7 +106,7 @@ fun CompassApp() {
                 onRestore = { restore.launch(BACKUP_OPEN_MIME_TYPES) },
                 onDeleteSong = { id ->
                     scope.launch {
-                        withContext(Dispatchers.IO) { store.delete(id) }
+                        storeLock.withLock { withContext(Dispatchers.IO) { store.delete(id) } }
                         reloads++
                     }
                 },
@@ -106,7 +118,7 @@ fun CompassApp() {
             NewSongScreen(
                 onCreate = { song ->
                     scope.launch {
-                        withContext(Dispatchers.IO) { store.save(song) }
+                        storeLock.withLock { withContext(Dispatchers.IO) { store.save(song) } }
                         // A new Song opens in Practice mode, like every Song.
                         route = song.id.toPracticeRoute()
                     }
@@ -117,19 +129,50 @@ fun CompassApp() {
 
         is Destination.Practice -> {
             BackHandler(onBack = goToLibrary)
-            val song by produceState<Song?>(null, destination.songId) {
-                value = withContext(Dispatchers.IO) { runCatching { store.load(destination.songId) }.getOrNull() }
-                if (value == null) {
-                    // Deleted, damaged, or saved by a newer Compass: say so and go back to the Library.
-                    Toast.makeText(context, R.string.song_cannot_open, Toast.LENGTH_LONG).show()
-                    goToLibrary()
-                }
+            val song = loadSong(store, storeLock, destination.songId, onMissing = goToLibrary)
+            song?.let { PracticeScreen(it, onBack = goToLibrary, onEdit = { route = destination.songId.toEditRoute() }) }
+        }
+
+        is Destination.Edit -> {
+            val backToPractice = { route = destination.songId.toPracticeRoute() }
+            BackHandler(onBack = backToPractice)
+            val song = loadSong(store, storeLock, destination.songId, onMissing = goToLibrary)
+            if (song != null) {
+                var session by remember(song) { mutableStateOf(EditSession.start(song)) }
+                EditScreen(
+                    session = session,
+                    onSessionChange = { next ->
+                        val edited = next.song != session.song
+                        session = next
+                        // Every edit is saved straight away, in the app's scope so leaving Edit mode can't cancel it.
+                        if (edited) scope.launch { save(context, store, storeLock, next.song) }
+                    },
+                    onDone = backToPractice,
+                )
             }
-            song?.let { PracticeScreen(it, onBack = goToLibrary) }
         }
     }
 }
 
+/** Loads a Song, or says it can't be opened and calls [onMissing]. Null while loading. */
+@Composable
+private fun loadSong(store: SongStore, storeLock: Mutex, id: SongId, onMissing: () -> Unit): Song? {
+    val context = LocalContext.current
+    val song by produceState<Song?>(null, id) {
+        value = storeLock.withLock { withContext(Dispatchers.IO) { runCatching { store.load(id) }.getOrNull() } }
+        if (value == null) {
+            // Deleted, damaged, or saved by a newer Compass: say so and go back to the Library.
+            Toast.makeText(context, R.string.song_cannot_open, Toast.LENGTH_LONG).show()
+            onMissing()
+        }
+    }
+    return song
+}
+
+private suspend fun save(context: Context, store: SongStore, storeLock: Mutex, song: Song) {
+    val saved = storeLock.withLock { withContext(Dispatchers.IO) { runCatching { store.save(song) }.isSuccess } }
+    if (!saved) Toast.makeText(context, R.string.song_cannot_save, Toast.LENGTH_LONG).show()
+}
 private fun RestoreReport.summary(resources: Resources): String {
     val restored = resources.getString(R.string.restore_done, added, addedAsCopies, alreadyPresent)
     return if (unreadable == 0) restored else restored + "\n" + resources.getString(R.string.restore_unreadable, unreadable)
@@ -143,11 +186,14 @@ private val BACKUP_OPEN_MIME_TYPES = arrayOf(BACKUP_MIME_TYPE, "application/x-zi
 private const val LIBRARY_ROUTE = "library"
 private const val NEW_SONG_ROUTE = "new-song"
 private const val PRACTICE_ROUTE_PREFIX = "practice/"
+private const val EDIT_ROUTE_PREFIX = "edit/"
 
 private fun SongId.toPracticeRoute() = PRACTICE_ROUTE_PREFIX + value
+private fun SongId.toEditRoute() = EDIT_ROUTE_PREFIX + value
 
 private fun String.toDestination(): Destination = when {
     this == NEW_SONG_ROUTE -> Destination.NewSong
     startsWith(PRACTICE_ROUTE_PREFIX) -> Destination.Practice(SongId(removePrefix(PRACTICE_ROUTE_PREFIX)))
+    startsWith(EDIT_ROUTE_PREFIX) -> Destination.Edit(SongId(removePrefix(EDIT_ROUTE_PREFIX)))
     else -> Destination.Library
 }

@@ -10,6 +10,33 @@
     <!-- Tablatura y notación estándar, una sobre otra. -->
     <string name="view_both">Ambas</string>
     <string name="song_cannot_open">No se puede abrir esta canción. Puede estar dañada o haberse creado con una versión más reciente de Compass.</string>
+    <string name="song_cannot_save">No se pudo guardar este cambio.</string>
+
+    <string name="enter_edit_mode">Editar</string>
+    <string name="leave_edit_mode">Listo</string>
+    <string name="edit_mode">Modo edición</string>
+    <string name="undo">Deshacer</string>
+    <string name="redo">Rehacer</string>
+    <string name="measure_number">Compás %1$d</string>
+    <string name="measure_incomplete">El compás %1$d está incompleto</string>
+    <string name="measure_overfull">El compás %1$d dura más de lo que permite su indicación de compás</string>
+    <string name="note_value_whole">Redonda</string>
+    <string name="note_value_half">Blanca</string>
+    <string name="note_value_quarter">Negra</string>
+    <string name="note_value_eighth">Corchea</string>
+    <string name="note_value_sixteenth">Semicorchea</string>
+    <string name="note_value_thirty_second">Fusa</string>
+    <string name="dotted">Con puntillo</string>
+    <string name="triplet">Tresillo</string>
+    <string name="rest">Silencio</string>
+    <string name="rest_short">S</string>
+    <string name="cursor_previous_measure">Compás anterior</string>
+    <string name="cursor_next_measure">Compás siguiente</string>
+    <string name="cursor_previous_beat">Tiempo anterior</string>
+    <string name="cursor_next_beat">Tiempo siguiente</string>
+    <string name="cursor_string_above">Cuerda de arriba</string>
+    <string name="cursor_string_below">Cuerda de abajo</string>
+    <string name="fret_pad">Teclado de trastes</string>
 
     <string name="library_title">Biblioteca</string>
     <string name="library_search">Buscar título o artista</string>

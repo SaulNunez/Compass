@@ -6,6 +6,7 @@ import com.saulnunez.compass.domain.InstrumentKind
 import com.saulnunez.compass.domain.KeySignature
 import com.saulnunez.compass.domain.Measure
 import com.saulnunez.compass.domain.Note
+import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Pitch
 import com.saulnunez.compass.domain.Rest
 import com.saulnunez.compass.domain.Song
@@ -58,8 +59,12 @@ internal enum class InstrumentDocument {
     @SerialName("bass") BASS,
 }
 
+/** Since format version 2: a note value plus its dot and triplet. Version 1 stored only the note value. */
 @Serializable
-internal enum class DurationDocument {
+internal data class DurationDocument(val value: NoteValueDocument, val dotted: Boolean, val triplet: Boolean)
+
+@Serializable
+internal enum class NoteValueDocument {
     @SerialName("whole") WHOLE,
     @SerialName("half") HALF,
     @SerialName("quarter") QUARTER,
@@ -115,13 +120,15 @@ private fun InstrumentKind.toDocument() = when (this) {
     InstrumentKind.BASS -> InstrumentDocument.BASS
 }
 
-private fun Duration.toDocument() = when (this) {
-    Duration.WHOLE -> DurationDocument.WHOLE
-    Duration.HALF -> DurationDocument.HALF
-    Duration.QUARTER -> DurationDocument.QUARTER
-    Duration.EIGHTH -> DurationDocument.EIGHTH
-    Duration.SIXTEENTH -> DurationDocument.SIXTEENTH
-    Duration.THIRTY_SECOND -> DurationDocument.THIRTY_SECOND
+private fun Duration.toDocument() = DurationDocument(value.toDocument(), dotted = isDotted, triplet = isTriplet)
+
+private fun NoteValue.toDocument() = when (this) {
+    NoteValue.WHOLE -> NoteValueDocument.WHOLE
+    NoteValue.HALF -> NoteValueDocument.HALF
+    NoteValue.QUARTER -> NoteValueDocument.QUARTER
+    NoteValue.EIGHTH -> NoteValueDocument.EIGHTH
+    NoteValue.SIXTEENTH -> NoteValueDocument.SIXTEENTH
+    NoteValue.THIRTY_SECOND -> NoteValueDocument.THIRTY_SECOND
 }
 
 internal fun SongDocument.toSong() = Song(
@@ -154,13 +161,15 @@ private fun InstrumentDocument.toInstrumentKind() = when (this) {
     InstrumentDocument.BASS -> InstrumentKind.BASS
 }
 
-private fun DurationDocument.toDuration() = when (this) {
-    DurationDocument.WHOLE -> Duration.WHOLE
-    DurationDocument.HALF -> Duration.HALF
-    DurationDocument.QUARTER -> Duration.QUARTER
-    DurationDocument.EIGHTH -> Duration.EIGHTH
-    DurationDocument.SIXTEENTH -> Duration.SIXTEENTH
-    DurationDocument.THIRTY_SECOND -> Duration.THIRTY_SECOND
+private fun DurationDocument.toDuration() = Duration(value.toNoteValue(), isDotted = dotted, isTriplet = triplet)
+
+private fun NoteValueDocument.toNoteValue() = when (this) {
+    NoteValueDocument.WHOLE -> NoteValue.WHOLE
+    NoteValueDocument.HALF -> NoteValue.HALF
+    NoteValueDocument.QUARTER -> NoteValue.QUARTER
+    NoteValueDocument.EIGHTH -> NoteValue.EIGHTH
+    NoteValueDocument.SIXTEENTH -> NoteValue.SIXTEENTH
+    NoteValueDocument.THIRTY_SECOND -> NoteValue.THIRTY_SECOND
 }
 
-internal const val CURRENT_FORMAT_VERSION = 1
+internal const val CURRENT_FORMAT_VERSION = 2
