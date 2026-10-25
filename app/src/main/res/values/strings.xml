@@ -10,6 +10,17 @@
     <string name="view_standard_notation">Standard notation</string>
     <!-- Both Tablature and Standard notation, stacked. -->
     <string name="view_both">Both</string>
+
+    <!-- Practice mode: Playback -->
+    <string name="playback_play">Play</string>
+    <!-- Stops Playback and goes back to where it started. -->
+    <string name="playback_stop">Stop</string>
+    <!-- Toggles the click track (metronome) during Playback. -->
+    <string name="playback_click">Click</string>
+    <!-- Toggles one Measure of clicks before Playback starts. -->
+    <string name="playback_count_in">Count-in</string>
+    <!-- The practice tempo as a percentage of the Song's written Tempos; %1$d is the percentage. -->
+    <string name="tempo_percentage">Tempo %1$d%%</string>
     <string name="song_cannot_open">This Song can’t be opened. It may be damaged or made with a newer version of Compass.</string>
     <string name="song_cannot_save">This change couldn’t be saved.</string>
 

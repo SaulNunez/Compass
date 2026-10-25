@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import com.saulnunez.compass.domain.EditSession
 import com.saulnunez.compass.domain.Library
+import com.saulnunez.compass.domain.PracticeSettings
 import com.saulnunez.compass.domain.Song
 import com.saulnunez.compass.domain.SongId
 import com.saulnunez.compass.edit.EditScreen
@@ -35,6 +36,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.time.Instant
 import java.time.LocalDate
 
 /** Where the app is: the Library, creating a Song, or a Song open in Practice mode or Edit mode. */
@@ -129,8 +131,33 @@ fun CompassApp() {
 
         is Destination.Practice -> {
             BackHandler(onBack = goToLibrary)
-            val song = loadSong(store, storeLock, destination.songId, onMissing = goToLibrary)
-            song?.let { PracticeScreen(it, onBack = goToLibrary, onEdit = { route = destination.songId.toEditRoute() }) }
+            val id = destination.songId
+            val song = loadSong(store, storeLock, id, onMissing = goToLibrary)
+            val loadedSettings by produceState<PracticeSettings?>(null, id) {
+                value = storeLock.withLock { withContext(Dispatchers.IO) { store.practiceSettings(id) } }
+            }
+            val initialSettings = loadedSettings
+            if (song != null && initialSettings != null) {
+                var settings by remember(id, initialSettings) { mutableStateOf(initialSettings) }
+                PracticeScreen(
+                    song = song,
+                    settings = settings,
+                    onSettingsChange = { next ->
+                        settings = next
+                        // Saved beside the Song, never into it; in the app's scope so leaving can't cancel it.
+                        scope.launch {
+                            storeLock.withLock { withContext(Dispatchers.IO) { runCatching { store.savePracticeSettings(id, next) } } }
+                        }
+                    },
+                    onPlaybackStarted = {
+                        scope.launch {
+                            storeLock.withLock { withContext(Dispatchers.IO) { runCatching { store.markPracticed(id, Instant.now()) } } }
+                        }
+                    },
+                    onBack = goToLibrary,
+                    onEdit = { route = id.toEditRoute() },
+                )
+            }
         }
 
         is Destination.Edit -> {

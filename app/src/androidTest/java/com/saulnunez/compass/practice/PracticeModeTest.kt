@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performClick
 import androidx.activity.ComponentActivity
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.saulnunez.compass.R
+import com.saulnunez.compass.domain.PracticeSettings
 import com.saulnunez.compass.domain.ShownViews
 import org.junit.Rule
 import org.junit.Test
@@ -28,12 +29,12 @@ class PracticeModeTest {
 
     @Test
     fun practiceModeOffersOnlyLeavingAndSwitchingToEditMode() {
-        compose.setContent { PracticeScreen(demoSong, onBack = {}, onEdit = {}) }
+        compose.setContent { PracticeScreen(demoSong, PracticeSettings(), onSettingsChange = {}, onBack = {}, onEdit = {}) }
 
-        // Back to the Library, the explicit switch to Edit mode and the choice of shown views
-        // (which leaves the Song alone) are the only actions: no number pad, Duration choice,
-        // undo or delete.
-        compose.onAllNodes(hasClickAction()).assertCountEquals(2 + ShownViews.entries.size)
+        // Back to the Library, the explicit switch to Edit mode, the choice of shown views and the
+        // Playback tools (play/stop, click, count-in; the tempo slider is not a click action), all of
+        // which leave the Song alone, are the only actions: no number pad, Duration choice, undo or delete.
+        compose.onAllNodes(hasClickAction()).assertCountEquals(2 + ShownViews.entries.size + 3)
         compose.onNodeWithText(string(R.string.back_to_library)).assertExists()
         compose.onNodeWithText(string(R.string.enter_edit_mode)).assertExists()
         compose.onAllNodesWithText(string(R.string.undo)).assertCountEquals(0)
@@ -44,7 +45,7 @@ class PracticeModeTest {
     fun editModeIsEnteredOnlyThroughTheEditAction() {
         var editing by mutableStateOf(false)
         compose.setContent {
-            if (editing) Text("editing") else PracticeScreen(demoSong, onBack = {}, onEdit = { editing = true })
+            if (editing) Text("editing") else PracticeScreen(demoSong, PracticeSettings(), onSettingsChange = {}, onBack = {}, onEdit = { editing = true })
         }
 
         compose.onAllNodesWithText("editing").assertCountEquals(0)
