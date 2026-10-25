@@ -16,6 +16,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -63,18 +64,41 @@ fun LoopChoice(song: Song, loop: Loop?, onLoopChange: (Loop?) -> Unit, modifier:
 }
 
 /** What the Loop dialog has selected: no Loop, the Section at an index, or a Measure range. */
-private const val NO_LOOP = -1
-private const val MEASURE_RANGE = -2
+private sealed interface LoopSelection {
+    data object None : LoopSelection
+    data class OfSection(val section: Int) : LoopSelection
+    data object OfMeasures : LoopSelection
+}
+
+/** Keeps the selection across rotation as a number: a Section's index, or below 0 for the others. */
+private val LoopSelectionSaver = Saver<LoopSelection, Int>(
+    save = {
+        when (it) {
+            LoopSelection.None -> SAVED_NONE
+            LoopSelection.OfMeasures -> SAVED_MEASURES
+            is LoopSelection.OfSection -> it.section
+        }
+    },
+    restore = {
+        when (it) {
+            SAVED_NONE -> LoopSelection.None
+            SAVED_MEASURES -> LoopSelection.OfMeasures
+            else -> LoopSelection.OfSection(it)
+        }
+    },
+)
+private const val SAVED_NONE = -1
+private const val SAVED_MEASURES = -2
 
 /** Asks for a Loop; Measures are numbered from 1 here and 0-based in the [Loop] given to [onChoose]. */
 @Composable
 private fun LoopDialog(song: Song, loop: Loop?, onChoose: (Loop?) -> Unit, onDismiss: () -> Unit) {
-    var selected by rememberSaveable {
+    var selected by rememberSaveable(stateSaver = LoopSelectionSaver) {
         mutableStateOf(
             when (loop) {
-                null -> NO_LOOP
-                is Loop.OfSection -> loop.section
-                is Loop.OfMeasures -> MEASURE_RANGE
+                null -> LoopSelection.None
+                is Loop.OfSection -> LoopSelection.OfSection(loop.section)
+                is Loop.OfMeasures -> LoopSelection.OfMeasures
             },
         )
     }
@@ -85,27 +109,29 @@ private fun LoopDialog(song: Song, loop: Loop?, onChoose: (Loop?) -> Unit, onDis
     val first = firstText.toIntOrNull()?.takeIf { it in 1..measureCount }
     val last = lastText.toIntOrNull()?.takeIf { it in 1..measureCount && (first == null || it >= first) }
 
-    val chosen: Loop? = when (selected) {
-        NO_LOOP -> null
-        MEASURE_RANGE -> if (first != null && last != null) Loop.OfMeasures(first - 1, last - 1) else null
-        else -> Loop.OfSection(selected)
+    val chosen: Loop? = when (val selection = selected) {
+        LoopSelection.None -> null
+        LoopSelection.OfMeasures -> if (first != null && last != null) Loop.OfMeasures(first - 1, last - 1) else null
+        is LoopSelection.OfSection -> Loop.OfSection(selection.section)
     }
-    val canApply = selected != MEASURE_RANGE || chosen != null
+    val canApply = selected != LoopSelection.OfMeasures || chosen != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.loop_title)) },
         text = {
             Column(Modifier.selectableGroup().verticalScroll(rememberScrollState())) {
-                LoopOption(stringResource(R.string.loop_none), selected == NO_LOOP) { selected = NO_LOOP }
+                LoopOption(stringResource(R.string.loop_none), selected == LoopSelection.None) { selected = LoopSelection.None }
                 song.sections.forEachIndexed { index, section ->
                     LoopOption(
                         stringResource(R.string.loop_section_option, section.name, section.first + 1, section.last + 1),
-                        selected == index,
-                    ) { selected = index }
+                        selected == LoopSelection.OfSection(index),
+                    ) { selected = LoopSelection.OfSection(index) }
                 }
-                LoopOption(stringResource(R.string.loop_measures_option), selected == MEASURE_RANGE) { selected = MEASURE_RANGE }
-                if (selected == MEASURE_RANGE) {
+                LoopOption(stringResource(R.string.loop_measures_option), selected == LoopSelection.OfMeasures) {
+                    selected = LoopSelection.OfMeasures
+                }
+                if (selected == LoopSelection.OfMeasures) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         NumberField(R.string.field_first_measure, firstText, isError = first == null, Modifier.weight(1f)) {
                             firstText = it

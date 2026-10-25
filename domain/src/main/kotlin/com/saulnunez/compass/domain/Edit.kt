@@ -5,10 +5,17 @@ package com.saulnunez.compass.domain
  * them can be saved and undone the same way.
  *
  * Positions are 0-based: [track] indexes the Song's Tracks, [measure] its Measures, and
- * [beat] the Notes and Rests of that Measure in the Track's Voice, in order.
+ * [beat] the Notes and Rests of that Measure in the Track's Voice, in order. Edits of one Note
+ * take a [Cursor] for its Measure, beat and string.
  */
 sealed interface Edit {
     fun applyTo(song: Song): Song
+
+    /**
+     * Where this edit moves the Measures and Sections of [before], the Song it is applied to.
+     * Most edits move none; those that insert or remove Measures or Sections say where they go.
+     */
+    fun restructure(before: Song): Restructure = Restructure.none(before)
 }
 
 /** Writes [element] at [beat], replacing what is there; [beat] one past the last element appends it. */
@@ -20,13 +27,19 @@ data class WriteElement(val track: Int, val measure: Int, val beat: Int, val ele
 }
 
 /**
- * Writes [note] on its string at [beat]. A Note already on that string is replaced; Notes on
- * other strings stay, so the beat becomes a Chord and [note] takes their Duration and their slap
- * or pop. A Rest is replaced; [beat] one past the last element appends [note].
+ * Writes [note] at [at], on the cursor's string (which must be the Note's). A Note already on that
+ * string is replaced; Notes on other strings stay, so the beat becomes a Chord and [note] takes
+ * their Duration and their slap or pop. A Rest is replaced; the beat one past the last element
+ * appends [note].
  */
-data class WriteNote(val track: Int, val measure: Int, val beat: Int, val note: Note) : Edit {
-    override fun applyTo(song: Song): Song = song.editMeasure(track, measure) { elements ->
-        require(beat in 0..elements.size) { "Beat $beat is outside Measure ${measure + 1}" }
+data class WriteNote(val track: Int, val at: Cursor, val note: Note) : Edit {
+    init {
+        require(note.string == at.string) { "A Note on string ${note.string} can't be written on string ${at.string}" }
+    }
+
+    override fun applyTo(song: Song): Song = song.editMeasure(track, at.measure) { elements ->
+        val beat = at.beat
+        require(beat in 0..elements.size) { "Beat $beat is outside Measure ${at.measure + 1}" }
         val existing = elements.getOrNull(beat) ?: return@editMeasure elements + note
         val others = existing.notes.filter { it.string != note.string }
         val duration = if (others.isEmpty()) note.duration else existing.duration
@@ -35,9 +48,10 @@ data class WriteNote(val track: Int, val measure: Int, val beat: Int, val note: 
     }
 }
 
-/** Removes the Note on [string] from the Chord at [beat], leaving its other Notes. */
-data class DeleteNote(val track: Int, val measure: Int, val beat: Int, val string: Int) : Edit {
-    override fun applyTo(song: Song): Song = song.editMeasure(track, measure) { elements ->
+/** Removes the Note at [at] from the Chord there, leaving its other Notes. */
+data class DeleteNote(val track: Int, val at: Cursor) : Edit {
+    override fun applyTo(song: Song): Song = song.editMeasure(track, at.measure) { elements ->
+        val (_, beat, string) = at
         val chord = elements[beat]
         require(chord is Chord && chord.noteOn(string) != null) { "No Chord Note on string $string at beat ${beat + 1}" }
         elements.toMutableList().apply { set(beat, elementOf(chord.notes.filter { it.string != string }, chord.duration)) }
@@ -45,11 +59,12 @@ data class DeleteNote(val track: Int, val measure: Int, val beat: Int, val strin
 }
 
 /**
- * Ties the Note on [string] at [beat] to the Note just before it on the same string, which
- * may be in the previous Measure, giving it that fret; or unties it when [isTied] is false.
+ * Ties the Note at [at] to the Note just before it on the same string, which may be in the
+ * previous Measure, giving it that fret; or unties it when [isTied] is false.
  */
-data class SetTie(val track: Int, val measure: Int, val beat: Int, val string: Int, val isTied: Boolean) : Edit {
+data class SetTie(val track: Int, val at: Cursor, val isTied: Boolean) : Edit {
     override fun applyTo(song: Song): Song {
+        val (measure, beat, string) = at
         if (isTied) {
             requireNotNull(song.tracks[track].voice.elementBefore(measure, beat)?.noteOn(string)) {
                 "No Note before beat ${beat + 1} on string $string to tie to"
@@ -64,19 +79,13 @@ data class SetTie(val track: Int, val measure: Int, val beat: Int, val string: I
 }
 
 /**
- * Adds [technique] to the Note on [string] at [beat], taking off any Technique it cannot be
- * played with; or takes it off when [isAdded] is false. A Technique played by the whole Chord
- * (slap, pop) goes on or comes off every Note of the Chord at [beat].
+ * Adds [technique] to the Note at [at], taking off any Technique it cannot be played with; or
+ * takes it off when [isAdded] is false. A Technique played by the whole Chord (slap, pop) goes on
+ * or comes off every Note of the Chord there.
  */
-data class SetTechnique(
-    val track: Int,
-    val measure: Int,
-    val beat: Int,
-    val string: Int,
-    val technique: Technique,
-    val isAdded: Boolean,
-) : Edit {
+data class SetTechnique(val track: Int, val at: Cursor, val technique: Technique, val isAdded: Boolean) : Edit {
     override fun applyTo(song: Song): Song {
+        val (measure, beat, string) = at
         require(!isAdded || technique.isOfferedOn(song.tracks[track].instrument.kind)) {
             "$technique is not played on ${song.tracks[track].instrument.kind}"
         }
@@ -124,6 +133,8 @@ data class InsertMeasure(val at: Int) : Edit {
         val inserted = song.measures[(at - 1).coerceAtLeast(0)]
         return song.insertMeasures(at, listOf(inserted), song.tracks.map { listOf(emptyList()) })
     }
+
+    override fun restructure(before: Song) = measuresInserted(before, at, count = 1)
 }
 
 /**
@@ -148,6 +159,8 @@ data class DeleteMeasure(val measure: Int) : Edit {
             },
         )
     }
+
+    override fun restructure(before: Song) = measureDeleted(before, measure)
 }
 
 /** Changes the time signature at Measure [measure]; see [changeFrom] for how far it reaches. */
@@ -231,6 +244,8 @@ private fun Song.editTrack(track: Int, change: (Track) -> Track): Song =
 /** Adds [section] to the Song; its Measures must not belong to another Section. */
 data class AddSection(val section: Section) : Edit {
     override fun applyTo(song: Song): Song = song.copy(sections = (song.sections + section).sortedBy { it.first })
+
+    override fun restructure(before: Song) = sectionAdded(before, section)
 }
 
 /** Gives the Section at index [section] (in Measure order) a new [name]. */
@@ -239,7 +254,10 @@ data class RenameSection(val section: Int, val name: String) : Edit {
         song.copy(sections = song.sections.toMutableList().apply { set(section, get(section).copy(name = name)) })
 }
 
-/** Makes the Section at index [section] span Measures [first] to [last] instead; no other Section may hold them. */
+/**
+ * Makes the Section at index [section] span Measures [first] to [last] instead; no other Section may
+ * hold them, so resizing one never changes the Sections' order.
+ */
 data class ResizeSection(val section: Int, val first: Int, val last: Int) : Edit {
     override fun applyTo(song: Song): Song = song.copy(
         sections = song.sections.toMutableList()
@@ -257,6 +275,8 @@ data class ChangeSection(val section: Int, val name: String, val first: Int, val
 /** Removes the Section at index [section]; its Measures stay. */
 data class RemoveSection(val section: Int) : Edit {
     override fun applyTo(song: Song): Song = song.copy(sections = song.sections.toMutableList().apply { removeAt(section) })
+
+    override fun restructure(before: Song) = sectionRemoved(before, section)
 }
 
 /**
@@ -285,6 +305,8 @@ data class PasteMeasures(val at: Int, val copied: CopiedMeasures) : Edit {
         require(at in 0..song.measures.size) { "Cannot paste Measures at ${at + 1}" }
         return song.insertMeasures(at, copied.measures, copied.tracks)
     }
+
+    override fun restructure(before: Song) = measuresInserted(before, at, count = copied.measures.size)
 }
 
 /**

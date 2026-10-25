@@ -58,6 +58,7 @@ import com.saulnunez.compass.domain.Measure
 import com.saulnunez.compass.domain.Tempo
 import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.library.keySignatureLabel
+import com.saulnunez.compass.library.label
 import com.saulnunez.compass.ui.AdaptivePanes
 import com.saulnunez.compass.ui.BEATS_RANGE
 import com.saulnunez.compass.ui.BEAT_UNITS
@@ -701,18 +702,6 @@ private fun noteSymbol(note: Note): String = when {
     Technique.DEAD_NOTE in note.techniques -> "x"
     note.isTied -> "(${note.fret})"
     else -> note.fret.toString()
-}
-
-private fun Technique.label(): Int = when (this) {
-    Technique.HAMMER_ON_PULL_OFF -> R.string.technique_hammer_on_pull_off
-    Technique.SLIDE -> R.string.technique_slide
-    Technique.BEND -> R.string.technique_bend
-    Technique.BEND_AND_RELEASE -> R.string.technique_bend_and_release
-    Technique.VIBRATO -> R.string.technique_vibrato
-    Technique.PALM_MUTE -> R.string.technique_palm_mute
-    Technique.DEAD_NOTE -> R.string.technique_dead_note
-    Technique.SLAP -> R.string.technique_slap
-    Technique.POP -> R.string.technique_pop
 }
 
 private fun NoteValue.label(): Int = when (this) {
