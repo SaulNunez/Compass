@@ -85,6 +85,24 @@
     <string name="restore_unreadable">Couldn’t read (damaged or from a newer Compass): %1$d</string>
     <string name="restore_not_a_backup">That file isn’t a Compass Backup, or it’s damaged.</string>
     <string name="restore_failed">Couldn’t read the Backup.</string>
+
+    <!-- Song file -->
+    <string name="song_share">Share</string>
+    <!-- Title of the share sheet; %1$s is the Song title. -->
+    <string name="song_share_chooser">Send “%1$s”</string>
+    <string name="song_share_failed">Couldn’t prepare the Song file.</string>
+    <!-- Used as the Song file name when the Song’s title can’t be used as one. -->
+    <string name="song_file_untitled">Song</string>
+    <string name="song_file_import">Import</string>
+    <!-- %1$s is the imported Song’s title. -->
+    <string name="song_file_imported">“%1$s” added to your Library.</string>
+    <!-- %1$s is the imported Song’s title. -->
+    <string name="song_file_imported_as_copy">“%1$s” added as a copy. Your own version is unchanged.</string>
+    <!-- %1$s is the imported Song’s title. -->
+    <string name="song_file_already_present">“%1$s” is already in your Library.</string>
+    <string name="song_file_not_a_song_file">That file isn’t a Compass Song file, or it’s damaged.</string>
+    <string name="song_file_too_new">That Song file was made with a newer version of Compass. Update Compass to import it.</string>
+    <string name="song_file_import_failed">Couldn’t read the Song file.</string>
     <!-- New Song -->
     <string name="new_song_title">New Song</string>
     <string name="field_title">Title</string>
@@ -150,4 +168,12 @@
         <item>D♯ minor</item>
         <item>A♯ minor</item>
     </string-array>
+    <string name="insert_measure_before">Insert Measure before</string>
+    <string name="insert_measure_after">Insert Measure after</string>
+    <string name="delete_measure">Delete Measure</string>
+    <string name="measure_settings_summary">%1$d/%2$d · %3$s · %4$d BPM</string>
+    <string name="change_measure_settings">Change time signature, key signature and Tempo: %1$s</string>
+    <string name="measure_settings_title">Measure %1$d</string>
+    <string name="measure_settings_hint">Changes apply to every Track, from this Measure until the next change.</string>
+    <string name="apply">Apply</string>
 </resources>

@@ -39,6 +39,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.saulnunez.compass.R
+import androidx.compose.material3.AlertDialog
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import com.saulnunez.compass.domain.KeySignature
+import com.saulnunez.compass.domain.Measure
+import com.saulnunez.compass.domain.Tempo
+import com.saulnunez.compass.domain.TimeSignature
+import com.saulnunez.compass.library.keySignatureLabel
+import com.saulnunez.compass.ui.BEATS_RANGE
+import com.saulnunez.compass.ui.BEAT_UNITS
+import com.saulnunez.compass.ui.Dropdown
+import com.saulnunez.compass.ui.NumberField
+import com.saulnunez.compass.ui.TEMPO_RANGE
 import com.saulnunez.compass.domain.Duration
 import com.saulnunez.compass.domain.EditSession
 import com.saulnunez.compass.domain.MeasureFill
@@ -90,6 +106,7 @@ fun EditScreen(
             TablatureView(song, Modifier.weight(1f).fillMaxWidth())
             HorizontalDivider()
             MeasureStrip(session, onSessionChange)
+            MeasureTools(session, onSessionChange)
             MeasureEditor(session)
             DurationBar(session, onSessionChange)
             CursorPad(session, onSessionChange)
@@ -132,6 +149,102 @@ private fun measureDescription(number: Int, fill: MeasureFill): String = when (f
     MeasureFill.INCOMPLETE -> stringResource(R.string.measure_incomplete, number)
     MeasureFill.OVERFULL -> stringResource(R.string.measure_overfull, number)
     MeasureFill.UNWRITTEN, MeasureFill.FULL -> stringResource(R.string.measure_number, number)
+}
+
+/**
+ * Inserts and deletes Measures (in every Track) and changes the time signature, key signature
+ * and Tempo from the cursor's Measure on.
+ */
+@Composable
+private fun MeasureTools(session: EditSession, onSessionChange: (EditSession) -> Unit) {
+    var editingSettings by rememberSaveable { mutableStateOf(false) }
+    val measure = session.measureAtCursor
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
+    ) {
+        OutlinedButton(onClick = { onSessionChange(session.insertMeasureBefore()) }) {
+            Text(stringResource(R.string.insert_measure_before))
+        }
+        OutlinedButton(onClick = { onSessionChange(session.insertMeasureAfter()) }) {
+            Text(stringResource(R.string.insert_measure_after))
+        }
+        OutlinedButton(onClick = { onSessionChange(session.deleteMeasure()) }, enabled = session.canDeleteMeasure) {
+            Text(stringResource(R.string.delete_measure))
+        }
+        val summary = stringResource(
+            R.string.measure_settings_summary,
+            measure.timeSignature.beats,
+            measure.timeSignature.beatUnit,
+            keySignatureLabel(measure.keySignature),
+            measure.tempo.beatsPerMinute,
+        )
+        val description = stringResource(R.string.change_measure_settings, summary)
+        OutlinedButton(
+            onClick = { editingSettings = true },
+            modifier = Modifier.semantics { contentDescription = description },
+        ) { Text(summary) }
+    }
+    if (editingSettings) {
+        MeasureSettingsDialog(
+            measureNumber = session.cursor.measure + 1,
+            current = measure,
+            onApply = {
+                editingSettings = false
+                onSessionChange(session.changeMeasure(it))
+            },
+            onDismiss = { editingSettings = false },
+        )
+    }
+}
+
+/** Asks for a Measure's time signature, key signature and Tempo, starting from [current]. */
+@Composable
+private fun MeasureSettingsDialog(measureNumber: Int, current: Measure, onApply: (Measure) -> Unit, onDismiss: () -> Unit) {
+    var tempoText by rememberSaveable { mutableStateOf(current.tempo.beatsPerMinute.toString()) }
+    var beatsText by rememberSaveable { mutableStateOf(current.timeSignature.beats.toString()) }
+    var beatUnit by rememberSaveable { mutableIntStateOf(current.timeSignature.beatUnit) }
+    var keyIndex by rememberSaveable { mutableIntStateOf(KeySignature.ALL.indexOf(current.keySignature)) }
+
+    val tempo = tempoText.toIntOrNull()?.takeIf { it in TEMPO_RANGE }
+    val beats = beatsText.toIntOrNull()?.takeIf { it in BEATS_RANGE }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.measure_settings_title, measureNumber)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.measure_settings_hint), style = MaterialTheme.typography.bodySmall)
+                NumberField(R.string.field_tempo, tempoText, isError = tempo == null) { tempoText = it }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NumberField(R.string.field_beats, beatsText, isError = beats == null, Modifier.weight(1f)) { beatsText = it }
+                    Dropdown(
+                        label = stringResource(R.string.field_beat_unit),
+                        options = BEAT_UNITS,
+                        selected = beatUnit,
+                        optionLabel = { it.toString() },
+                        onSelect = { beatUnit = it },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Dropdown(
+                    label = stringResource(R.string.field_key),
+                    options = KeySignature.ALL,
+                    selected = KeySignature.ALL[keyIndex],
+                    optionLabel = { keySignatureLabel(it) },
+                    onSelect = { keyIndex = KeySignature.ALL.indexOf(it) },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = tempo != null && beats != null,
+                onClick = { onApply(Measure(TimeSignature(beats!!, beatUnit), KeySignature.ALL[keyIndex], Tempo(tempo!!))) },
+            ) { Text(stringResource(R.string.apply)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
 }
 
 /** The cursor's Measure as a grid of strings by beats, the cursor's cell highlighted. */

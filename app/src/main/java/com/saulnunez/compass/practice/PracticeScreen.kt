@@ -60,6 +60,7 @@ fun PracticeScreen(
     onSettingsChange: (PracticeSettings) -> Unit,
     onBack: () -> Unit,
     onEdit: () -> Unit,
+    onShare: () -> Unit,
     modifier: Modifier = Modifier,
     onPlaybackStarted: () -> Unit = {},
 ) {
@@ -91,7 +92,10 @@ fun PracticeScreen(
                     }
                 },
                 navigationIcon = { BackToLibraryButton(onBack) },
-                actions = { TextButton(onClick = onEdit) { Text(stringResource(R.string.enter_edit_mode)) } },
+                actions = {
+                    TextButton(onClick = onShare) { Text(stringResource(R.string.song_share)) }
+                    TextButton(onClick = onEdit) { Text(stringResource(R.string.enter_edit_mode)) }
+                },
             )
         },
     ) { innerPadding ->
@@ -189,6 +193,6 @@ private fun ShownViews.label(): Int = when (this) {
 @Composable
 private fun PracticeScreenPreview() {
     CompassTheme {
-        PracticeScreen(demoSong, PracticeSettings(), onSettingsChange = {}, onBack = {}, onEdit = {})
+        PracticeScreen(demoSong, PracticeSettings(), onSettingsChange = {}, onBack = {}, onEdit = {}, onShare = {})
     }
 }

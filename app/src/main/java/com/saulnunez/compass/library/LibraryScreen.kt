@@ -53,6 +53,8 @@ fun LibraryScreen(
     onNewSong: () -> Unit,
     onBackUp: () -> Unit,
     onRestore: () -> Unit,
+    onImportSong: () -> Unit,
+    onShareSong: (SongId) -> Unit,
     onDeleteSong: (SongId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -65,7 +67,10 @@ fun LibraryScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.library_title)) },
-                actions = { BackupMenu(onBackUp = onBackUp, onRestore = onRestore) },
+                actions = {
+                    TextButton(onClick = onImportSong) { Text(stringResource(R.string.song_file_import)) }
+                    BackupMenu(onBackUp = onBackUp, onRestore = onRestore)
+                },
             )
         },
         floatingActionButton = {
@@ -102,7 +107,12 @@ fun LibraryScreen(
                 }
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     items(entries, key = { it.id.value }) { entry ->
-                        SongRow(entry, onOpen = { onOpenSong(entry.id) }, onDelete = { pendingDelete = entry.id.value })
+                        SongRow(
+                            entry,
+                            onOpen = { onOpenSong(entry.id) },
+                            onShare = { onShareSong(entry.id) },
+                            onDelete = { pendingDelete = entry.id.value },
+                        )
                         HorizontalDivider()
                     }
                 }
@@ -154,11 +164,16 @@ private fun BackupMenu(onBackUp: () -> Unit, onRestore: () -> Unit) {
 }
 
 @Composable
-private fun SongRow(entry: LibraryEntry, onOpen: () -> Unit, onDelete: () -> Unit) {
+private fun SongRow(entry: LibraryEntry, onOpen: () -> Unit, onShare: () -> Unit, onDelete: () -> Unit) {
     ListItem(
         headlineContent = { Text(entry.title) },
         supportingContent = entry.artist.takeIf { it.isNotBlank() }?.let { artist -> { Text(artist) } },
-        trailingContent = { TextButton(onClick = onDelete) { Text(stringResource(R.string.delete)) } },
+        trailingContent = {
+            Row {
+                TextButton(onClick = onShare) { Text(stringResource(R.string.song_share)) }
+                TextButton(onClick = onDelete) { Text(stringResource(R.string.delete)) }
+            }
+        },
         modifier = Modifier.clickable(onClick = onOpen),
     )
 }
@@ -184,6 +199,8 @@ private fun LibraryScreenPreview() {
             onNewSong = {},
             onBackUp = {},
             onRestore = {},
+            onImportSong = {},
+            onShareSong = {},
             onDeleteSong = {},
         )
     }
