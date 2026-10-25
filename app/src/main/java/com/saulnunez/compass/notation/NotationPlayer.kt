@@ -30,8 +30,32 @@ class NotationPlayer internal constructor(private val playsOnTap: Boolean) {
     private var api: AlphaTabApiBase<*>? = null
     private var unsubscribe: List<() -> Unit> = emptyList()
 
-    /** Where Stop goes back to: the start of the Song, or the Measure Playback was last started from. */
+    /** Where Stop goes back to: the start of the Song (or Loop), or the Measure Playback was last started from. */
     private var startTick = 0.0
+
+    /**
+     * The Measures (0-based) Playback repeats until stopped, or null to play to the end. Playback
+     * stays within them: it starts at their first Measure when started from outside them.
+     */
+    var loop: IntRange? = null
+        set(value) {
+            if (field == value) return
+            field = value
+            applyLoop()
+        }
+
+    /**
+     * Gives alphaTab's player the [loop]. Its range is lost whenever the MIDI is reloaded (a rebuilt
+     * Score), and its cache may still report the old one, so it is always assigned again then.
+     */
+    private fun applyLoop() {
+        val api = api ?: return
+        val range = loop?.let { measures -> api.score?.let { api.tickCache?.playbackRangeOf(it, measures) } }
+        // Setting the range also moves Playback to its start.
+        api.playbackRange = range
+        api.isLooping = range != null
+        startTick = range?.startTick ?: 0.0
+    }
 
     fun play() {
         if (api?.play() == true) onStarted()
@@ -54,10 +78,14 @@ class NotationPlayer internal constructor(private val playsOnTap: Boolean) {
         api.tickPosition = startTick
     }
 
-    /** Starts Playback at the beginning of Measure [measure] (0-based), or jumps there if already playing. */
+    /**
+     * Starts Playback at the beginning of Measure [measure] (0-based), or jumps there if already
+     * playing; outside the [loop], at the Loop's first Measure.
+     */
     fun playFrom(measure: Int) {
         val api = api ?: return
-        val masterBar = api.score?.masterBars?.takeIf { measure < it.length.toInt() }?.get(measure) ?: return
+        val start = loop?.takeUnless { measure in it }?.first ?: measure
+        val masterBar = api.score?.masterBars?.takeIf { start < it.length.toInt() }?.get(start) ?: return
         val tickCache = api.tickCache ?: return
         startTick = tickCache.getMasterBarStart(masterBar)
         api.tickPosition = startTick
@@ -75,6 +103,7 @@ class NotationPlayer internal constructor(private val playsOnTap: Boolean) {
             api.playerReady.on {
                 isReady = true
                 startTick = 0.0
+                applyLoop()
             },
             api.playerStateChanged.on { isPlaying = it.state == PlayerState.Playing },
             // Measures are shared by every Track, so a bar's index is its Measure's index.

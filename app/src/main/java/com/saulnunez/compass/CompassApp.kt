@@ -208,16 +208,36 @@ fun CompassApp() {
         is Destination.Edit -> {
             val backToPractice = { route = destination.songId.toPracticeRoute() }
             BackHandler(onBack = backToPractice)
-            val song = loadSong(store, storeLock, destination.songId, onMissing = goToLibrary)
-            if (song != null) {
+            val id = destination.songId
+            val song = loadSong(store, storeLock, id, onMissing = goToLibrary)
+            // The Practice settings as saved for the Song as it was before this session's edits.
+            val practiceSettings by produceState<PracticeSettings?>(null, id) {
+                value = storeLock.withLock { withContext(Dispatchers.IO) { store.practiceSettings(id) } }
+            }
+            val savedSettings = practiceSettings
+            if (song != null && savedSettings != null) {
                 var session by remember(song) { mutableStateOf(EditSession.start(song)) }
+                var reconciledSettings by remember(song, savedSettings) { mutableStateOf(savedSettings) }
                 EditScreen(
                     session = session,
                     onSessionChange = { next ->
                         val edited = next.song != session.song
                         session = next
+                        // The Loop follows the Measures and Sections it was set on (undone edits included).
+                        val reconciled = next.reconcile(savedSettings)
+                        val settingsChanged = reconciled != reconciledSettings
+                        reconciledSettings = reconciled
                         // Every edit is saved straight away, in the app's scope so leaving Edit mode can't cancel it.
-                        if (edited) scope.launch { save(context, store, storeLock, next.song) }
+                        if (edited) {
+                            scope.launch {
+                                save(context, store, storeLock, next.song)
+                                if (settingsChanged) {
+                                    storeLock.withLock {
+                                        withContext(Dispatchers.IO) { runCatching { store.savePracticeSettings(id, reconciled) } }
+                                    }
+                                }
+                            }
+                        }
                     },
                     onDone = backToPractice,
                 )

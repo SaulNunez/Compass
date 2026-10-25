@@ -1,6 +1,7 @@
 package com.saulnunez.compass.storage
 
 import com.saulnunez.compass.domain.KeySignature
+import com.saulnunez.compass.domain.Loop
 import com.saulnunez.compass.domain.Measure
 import com.saulnunez.compass.domain.PracticeSettings
 import com.saulnunez.compass.domain.ShownViews
@@ -140,5 +141,28 @@ class PracticeSettingsStoreTest {
         restored.restore(ByteArrayInputStream(backup))
 
         assertEquals(practiced, restored.practiceSettings(song.id))
+    }
+
+    @Test
+    fun `a saved Loop is restored when the Song is opened again`() {
+        val sectionLoop = practiced.copy(loop = Loop.OfSection(section = 2))
+        val measureLoop = practiced.copy(loop = Loop.OfMeasures(first = 16, last = 23))
+        val store = SongStore(folder.root).apply { save(song) }
+
+        store.savePracticeSettings(song.id, sectionLoop)
+        assertEquals(sectionLoop, SongStore(folder.root).practiceSettings(song.id))
+        store.savePracticeSettings(song.id, measureLoop)
+        assertEquals(measureLoop, SongStore(folder.root).practiceSettings(song.id))
+    }
+
+    @Test
+    fun `Practice settings saved before Loops existed open with no Loop`() {
+        val store = SongStore(folder.root).apply { save(song) }
+        store.savePracticeSettings(song.id, practiced)
+        folder.root.walk().single { it.name.startsWith("practice") }.writeText(
+            """{"formatVersion":1,"tempoPercentage":65,"shownViews":"both","click":true,"countIn":true}""",
+        )
+
+        assertEquals(practiced, store.practiceSettings(song.id))
     }
 }

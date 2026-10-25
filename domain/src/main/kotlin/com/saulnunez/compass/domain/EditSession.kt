@@ -21,10 +21,21 @@ class EditSession private constructor(
     private val redoStack: List<Snapshot> = emptyList(),
     /** The Measures last copied with [copySection], ready to paste. Not part of the Song, so undo leaves it. */
     private val copied: CopiedMeasures? = null,
+    /** Where the Measures and Sections of the Song the session started with are in [song] now. */
+    private val restructure: Restructure = Restructure.none(song),
 ) {
 
-    /** The Song and where the cursor was, before or after an edit. */
-    private data class Snapshot(val song: Song, val cursor: Cursor)
+    /** The Song, where the cursor was and where its Measures and Sections were, before or after an edit. */
+    private data class Snapshot(val song: Song, val cursor: Cursor, val restructure: Restructure)
+
+    /**
+     * [settings], saved for the Song this session started with, as they apply to the Song as edited:
+     * a Section Loop follows its Section and goes with it; a Measure-range Loop shifts and shrinks
+     * with inserted and deleted Measures, taking in Measures inserted inside it, and is cleared only
+     * when none of its Measures remain. Undone edits are undone here too.
+     */
+    fun reconcile(settings: PracticeSettings): PracticeSettings =
+        settings.copy(loop = settings.loop?.let(restructure::reconcile))
 
     val canUndo: Boolean get() = undoStack.isNotEmpty()
     val canRedo: Boolean get() = redoStack.isNotEmpty()
@@ -32,15 +43,23 @@ class EditSession private constructor(
     /** Goes back to the Song before the latest edit, with the cursor where that edit was made. */
     fun undo(): EditSession {
         val previous = undoStack.lastOrNull() ?: return this
-        return copy(song = previous.song, undoStack = undoStack.dropLast(1), redoStack = redoStack + Snapshot(song, cursor))
-            .moveTo(previous.cursor)
+        return copy(
+            song = previous.song,
+            undoStack = undoStack.dropLast(1),
+            redoStack = redoStack + Snapshot(song, cursor, restructure),
+            restructure = previous.restructure,
+        ).moveTo(previous.cursor)
     }
 
     /** Brings back the latest undone edit. */
     fun redo(): EditSession {
         val next = redoStack.lastOrNull() ?: return this
-        return copy(song = next.song, undoStack = undoStack + Snapshot(song, cursor), redoStack = redoStack.dropLast(1))
-            .moveTo(next.cursor)
+        return copy(
+            song = next.song,
+            undoStack = undoStack + Snapshot(song, cursor, restructure),
+            redoStack = redoStack.dropLast(1),
+            restructure = next.restructure,
+        ).moveTo(next.cursor)
     }
 
     /**
@@ -236,8 +255,9 @@ class EditSession private constructor(
         if (edited == song) return copy()
         return copy(
             song = edited,
-            undoStack = if (isNewEdit) undoStack + Snapshot(song, cursor) else undoStack,
+            undoStack = if (isNewEdit) undoStack + Snapshot(song, cursor, restructure) else undoStack,
             redoStack = emptyList(),
+            restructure = restructure.then(edit.restructure(song)),
         )
     }
 
@@ -249,7 +269,8 @@ class EditSession private constructor(
         undoStack: List<Snapshot> = this.undoStack,
         redoStack: List<Snapshot> = this.redoStack,
         copied: CopiedMeasures? = this.copied,
-    ) = EditSession(song, cursor, duration, track, pendingDigit, undoStack, redoStack, copied)
+        restructure: Restructure = this.restructure,
+    ) = EditSession(song, cursor, duration, track, pendingDigit, undoStack, redoStack, copied, restructure)
 
     companion object {
         /** Starts editing the Track at index [track] of [song], with the cursor on its first beat and top string. */
