@@ -49,7 +49,7 @@ internal fun Edit.restructure(before: Song): Restructure = when (this) {
     )
     // No two Sections share a Measure, so resizing one never changes their order.
     is ResizeSection, is ChangeSection, is RenameSection,
-    is WriteElement, is ChangeDuration, is DeleteElement,
+    is WriteElement, is WriteNote, is DeleteNote, is SetTie, is SetTechnique, is ChangeDuration, is DeleteElement,
     is ChangeTimeSignature, is ChangeKeySignature, is ChangeTempo, is ChangeMeasure,
     -> Restructure.none(before)
 }

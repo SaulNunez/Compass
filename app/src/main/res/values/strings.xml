@@ -62,6 +62,17 @@
     <string name="rest">Rest</string>
     <!-- Marks a Rest in the small Measure grid; keep it short. -->
     <string name="rest_short">R</string>
+    <string name="techniques">Techniques for the Note at the cursor</string>
+    <string name="tie">Tie</string>
+    <string name="technique_hammer_on_pull_off">Hammer-on/pull-off</string>
+    <string name="technique_slide">Slide</string>
+    <string name="technique_bend">Bend</string>
+    <string name="technique_bend_and_release">Bend and release</string>
+    <string name="technique_vibrato">Vibrato</string>
+    <string name="technique_palm_mute">Palm mute</string>
+    <string name="technique_dead_note">Dead note</string>
+    <string name="technique_slap">Slap</string>
+    <string name="technique_pop">Pop</string>
     <string name="cursor_previous_measure">Previous Measure</string>
     <string name="cursor_next_measure">Next Measure</string>
     <string name="cursor_previous_beat">Previous beat</string>

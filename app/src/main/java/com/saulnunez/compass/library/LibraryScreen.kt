@@ -4,12 +4,20 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -45,7 +53,7 @@ import com.saulnunez.compass.ui.theme.CompassTheme
 /**
  * The list of all Songs. [library] is null while it is still loading.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun LibraryScreen(
     library: Library?,
@@ -76,24 +84,28 @@ fun LibraryScreen(
         floatingActionButton = {
             ExtendedFloatingActionButton(onClick = onNewSong) { Text(stringResource(R.string.new_song)) }
         },
+        contentWindowInsets = WindowInsets.safeDrawing,
     ) { innerPadding ->
-        Column(Modifier.padding(innerPadding).fillMaxSize()) {
-            OutlinedTextField(
-                value = search,
-                onValueChange = { search = it },
-                label = { Text(stringResource(R.string.library_search)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            )
-            Row(
+        Column(Modifier.padding(innerPadding).consumeWindowInsets(innerPadding).fillMaxSize()) {
+            // On a wide screen the order chips sit beside the search field; on a phone they wrap below it.
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             ) {
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it },
+                    label = { Text(stringResource(R.string.library_search)) },
+                    singleLine = true,
+                    modifier = Modifier.widthIn(min = SEARCH_MIN_WIDTH).weight(1f),
+                )
                 LibraryOrder.entries.forEach { option ->
                     FilterChip(
                         selected = order == option,
                         onClick = { order = option },
                         label = { Text(stringResource(option.label())) },
+                        modifier = Modifier.padding(vertical = 8.dp),
                     )
                 }
             }
@@ -105,15 +117,23 @@ fun LibraryScreen(
                     val message = if (library.entries.isEmpty()) R.string.library_empty else R.string.library_no_matches
                     Text(stringResource(message), style = MaterialTheme.typography.bodyLarge)
                 }
-                else -> LazyColumn(Modifier.fillMaxSize()) {
+                // One column on a phone, more on a tablet or a phone on its side.
+                else -> LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = SONG_MIN_WIDTH),
+                    // Room at the end so the New Song button doesn't cover the last Song.
+                    contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
                     items(entries, key = { it.id.value }) { entry ->
-                        SongRow(
-                            entry,
-                            onOpen = { onOpenSong(entry.id) },
-                            onShare = { onShareSong(entry.id) },
-                            onDelete = { pendingDelete = entry.id.value },
-                        )
-                        HorizontalDivider()
+                        Column {
+                            SongRow(
+                                entry,
+                                onOpen = { onOpenSong(entry.id) },
+                                onShare = { onShareSong(entry.id) },
+                                onDelete = { pendingDelete = entry.id.value },
+                            )
+                            HorizontalDivider()
+                        }
                     }
                 }
             }
@@ -177,6 +197,10 @@ private fun SongRow(entry: LibraryEntry, onOpen: () -> Unit, onShare: () -> Unit
         modifier = Modifier.clickable(onClick = onOpen),
     )
 }
+
+private val SEARCH_MIN_WIDTH = 280.dp
+private val SONG_MIN_WIDTH = 360.dp
+private val FAB_CLEARANCE = 88.dp
 
 private fun LibraryOrder.label(): Int = when (this) {
     LibraryOrder.TITLE -> R.string.library_sort_title

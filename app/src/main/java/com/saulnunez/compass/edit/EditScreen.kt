@@ -9,10 +9,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -20,7 +28,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -51,6 +58,7 @@ import com.saulnunez.compass.domain.Measure
 import com.saulnunez.compass.domain.Tempo
 import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.library.keySignatureLabel
+import com.saulnunez.compass.ui.AdaptivePanes
 import com.saulnunez.compass.ui.BEATS_RANGE
 import com.saulnunez.compass.ui.BEAT_UNITS
 import com.saulnunez.compass.ui.Dropdown
@@ -62,6 +70,8 @@ import com.saulnunez.compass.domain.MeasureFill
 import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Rest
+import com.saulnunez.compass.domain.Technique
+import com.saulnunez.compass.domain.noteOn
 import com.saulnunez.compass.domain.measureFill
 import com.saulnunez.compass.domain.ShownViews
 import com.saulnunez.compass.notation.NotationPlayer
@@ -71,7 +81,7 @@ import com.saulnunez.compass.practice.demoSong
 import com.saulnunez.compass.ui.theme.CompassTheme
 
 /**
- * Edit mode: writes Notes and Rests into the Tablature of a Song's first Track through
+ * Edit mode: writes Notes, Chords and Rests, ties and Techniques into the Tablature of a Song's first Track through
  * [session]. Every action hands the next session to [onSessionChange]; [onDone] switches back
  * to Practice mode. Playback here only plays the Song from the cursor and stops; the tempo
  * percentage, click and count-in are Practice mode's.
@@ -109,21 +119,64 @@ fun EditScreen(
                 },
             )
         },
+        contentWindowInsets = WindowInsets.safeDrawing,
     ) { innerPadding ->
-        Column(Modifier.padding(innerPadding).fillMaxSize()) {
+        // The tools sit beside the Tablature on a wide, landscape screen and below it otherwise.
+        AdaptivePanes(
+            modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding).fillMaxSize(),
+            panel = { sideBySide -> EditTools(session, onSessionChange, sideBySide) },
+        ) {
             // Rebuilt from the edited Song on every change, so Playback always plays what was just written.
-            NotationView(song, ShownViews.TABLATURE, Modifier.weight(1f).fillMaxWidth(), player = player)
-            HorizontalDivider()
+            NotationView(song, ShownViews.TABLATURE, Modifier.fillMaxSize(), player = player)
+        }
+    }
+}
+
+/**
+ * Everything that edits the Song. The cursor and number pads stay put at the bottom, within reach;
+ * the tools above them scroll when there isn't room for all of them (a phone on its side).
+ */
+@Composable
+private fun EditTools(session: EditSession, onSessionChange: (EditSession) -> Unit, sideBySide: Boolean) {
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+    Column(
+        Modifier
+            .then(if (sideBySide) Modifier.fillMaxHeight() else Modifier)
+            .drawBehind {
+                // Separates the tools from the Tablature: a line on the side they share.
+                val stroke = 1.dp.toPx()
+                if (sideBySide) {
+                    drawLine(dividerColor, Offset(stroke / 2, 0f), Offset(stroke / 2, size.height), stroke)
+                } else {
+                    drawLine(dividerColor, Offset(0f, stroke / 2), Offset(size.width, stroke / 2), stroke)
+                }
+            },
+    ) {
+        Column(
+            Modifier
+                // Takes all the room above the pads beside the Tablature; only what it needs below it.
+                .weight(1f, fill = sideBySide)
+                .verticalScroll(rememberScrollState())
+                .padding(top = 4.dp),
+        ) {
             MeasureStrip(session, onSessionChange)
             MeasureTools(session, onSessionChange)
             SectionTools(session, onSessionChange)
             MeasureEditor(session)
             DurationBar(session, onSessionChange)
+            TechniqueBar(session, onSessionChange)
+        }
+        // On a tablet the pads keep a thumb-sized width rather than stretching across the screen.
+        Column(
+            Modifier.widthIn(max = PADS_MAX_WIDTH).fillMaxWidth().align(Alignment.CenterHorizontally),
+        ) {
             CursorPad(session, onSessionChange)
             NumberPad(onDigit = { onSessionChange(session.typeDigit(it)) })
         }
     }
 }
+
+private val PADS_MAX_WIDTH = 560.dp
 
 /** Plays the Song from the cursor, or stops Playback and goes back to where it started. */
 @Composable
@@ -430,8 +483,9 @@ private fun MeasureEditor(session: EditSession) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     for (string in 1..track.instrument.stringCount) {
                         val isCursor = session.cursor.beat == beat && session.cursor.string == string
+                        val note = element?.noteOn(string)
                         val text = when {
-                            element is Note && element.string == string -> element.fret.toString()
+                            note != null -> noteSymbol(note)
                             element is Rest && string == (track.instrument.stringCount + 1) / 2 -> stringResource(R.string.rest_short)
                             else -> ""
                         }
@@ -492,6 +546,35 @@ private fun DurationBar(session: EditSession, onSessionChange: (EditSession) -> 
             OutlinedButton(onClick = { onSessionChange(session.delete()) }, enabled = session.elementAtCursor != null) {
                 Text(stringResource(R.string.delete))
             }
+        }
+    }
+}
+
+/** Ties the Note at the cursor and adds or removes its Techniques; disabled where there is no Note. */
+@Composable
+private fun TechniqueBar(session: EditSession, onSessionChange: (EditSession) -> Unit) {
+    val note = session.noteAtCursor
+    val description = stringResource(R.string.techniques)
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 8.dp)
+            .semantics { contentDescription = description },
+    ) {
+        FilterChip(
+            selected = note?.isTied == true,
+            onClick = { onSessionChange(session.toggleTie()) },
+            label = { Text(stringResource(R.string.tie)) },
+            enabled = session.canTie,
+        )
+        session.availableTechniques.forEach { technique ->
+            FilterChip(
+                selected = note != null && technique in note.techniques,
+                onClick = { onSessionChange(session.toggleTechnique(technique)) },
+                label = { Text(stringResource(technique.label())) },
+                enabled = note != null,
+            )
         }
     }
 }
@@ -557,6 +640,25 @@ private fun NoteValue.symbol(): String = when (this) {
 /** A short written form of a Duration, e.g. "1/4." for a dotted quarter or "1/8³" for a triplet eighth. */
 private fun durationSymbol(duration: Duration): String =
     duration.value.symbol() + (if (duration.isDotted) "." else "") + (if (duration.isTriplet) "³" else "")
+
+/** A Note's cell in the grid: its fret, in brackets when tied, or an x for a dead note. */
+private fun noteSymbol(note: Note): String = when {
+    Technique.DEAD_NOTE in note.techniques -> "x"
+    note.isTied -> "(${note.fret})"
+    else -> note.fret.toString()
+}
+
+private fun Technique.label(): Int = when (this) {
+    Technique.HAMMER_ON_PULL_OFF -> R.string.technique_hammer_on_pull_off
+    Technique.SLIDE -> R.string.technique_slide
+    Technique.BEND -> R.string.technique_bend
+    Technique.BEND_AND_RELEASE -> R.string.technique_bend_and_release
+    Technique.VIBRATO -> R.string.technique_vibrato
+    Technique.PALM_MUTE -> R.string.technique_palm_mute
+    Technique.DEAD_NOTE -> R.string.technique_dead_note
+    Technique.SLAP -> R.string.technique_slap
+    Technique.POP -> R.string.technique_pop
+}
 
 private fun NoteValue.label(): Int = when (this) {
     NoteValue.WHOLE -> R.string.note_value_whole
