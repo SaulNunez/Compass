@@ -50,9 +50,10 @@ fun Song.playbackTimeline(settings: PracticeSettings, fromMeasure: Int = 0): Pla
             var ticksBefore = 0
             track.voice.measures[index].forEach { element ->
                 val ticks = element.duration.ticks
-                if (element is Note) {
+                // A Chord's Notes all start together.
+                element.notes.forEach { note ->
                     val start = measureStart + timing.millis(ticksBefore)
-                    notes += TimedNote(start, timing.millis(ticks), trackIndex, index, element)
+                    notes += TimedNote(start, timing.millis(ticks), trackIndex, index, note)
                 }
                 ticksBefore += ticks
             }

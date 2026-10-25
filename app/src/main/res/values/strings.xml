@@ -49,6 +49,17 @@
     <string name="rest">Rest</string>
     <!-- Marks a Rest in the small Measure grid; keep it short. -->
     <string name="rest_short">R</string>
+    <string name="techniques">Techniques for the Note at the cursor</string>
+    <string name="tie">Tie</string>
+    <string name="technique_hammer_on_pull_off">Hammer-on/pull-off</string>
+    <string name="technique_slide">Slide</string>
+    <string name="technique_bend">Bend</string>
+    <string name="technique_bend_and_release">Bend and release</string>
+    <string name="technique_vibrato">Vibrato</string>
+    <string name="technique_palm_mute">Palm mute</string>
+    <string name="technique_dead_note">Dead note</string>
+    <string name="technique_slap">Slap</string>
+    <string name="technique_pop">Pop</string>
     <string name="cursor_previous_measure">Previous Measure</string>
     <string name="cursor_next_measure">Next Measure</string>
     <string name="cursor_previous_beat">Previous beat</string>
@@ -178,4 +189,18 @@
     <string name="measure_settings_title">Measure %1$d</string>
     <string name="measure_settings_hint">Changes apply to every Track, from this Measure until the next change.</string>
     <string name="apply">Apply</string>
+    <string name="new_section">New Section</string>
+    <string name="edit_section">Edit Section</string>
+    <string name="copy_section">Copy Section</string>
+    <string name="paste_measures">Paste Measures</string>
+    <string name="paste_measures_description">Paste the copied Measures before Measure %1$d, in every Track</string>
+    <string name="no_section">No Section</string>
+    <string name="section_at_cursor">Section: %1$s</string>
+    <string name="new_section_title">New Section</string>
+    <string name="edit_section_title">Section %1$s</string>
+    <string name="field_section_name">Name</string>
+    <string name="field_first_measure">First Measure</string>
+    <string name="field_last_measure">Last Measure</string>
+    <string name="section_overlaps">These Measures belong to another Section.</string>
+    <string name="remove_section">Remove Section</string>
 </resources>

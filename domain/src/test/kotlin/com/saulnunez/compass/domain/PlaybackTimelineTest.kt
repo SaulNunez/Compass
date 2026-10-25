@@ -115,6 +115,19 @@ class PlaybackTimelineTest {
     }
 
     @Test
+    fun `every Note of a Chord plays at once`() {
+        val chord = Chord(listOf(Note(1, 0, Duration.HALF), Note(2, 1, Duration.HALF)))
+        val song = song(fourFour(120) to listOf(chord, quarter(3)))
+
+        val timeline = song.playbackTimeline(settings())
+
+        assertEquals(
+            listOf(Note(1, 0, Duration.HALF) to 0.0, Note(2, 1, Duration.HALF) to 0.0, quarter(3) to 1000.0),
+            timeline.notes.map { it.note to it.startMillis },
+        )
+    }
+
+    @Test
     fun `the tempo percentage goes from 25 to 150`() {
         assertEquals(25, TempoPercentage(25).percent)
         assertEquals(150, TempoPercentage(150).percent)

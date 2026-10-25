@@ -22,22 +22,35 @@ object SongFormat {
         if (formatVersion !in 1..CURRENT_FORMAT_VERSION) throw UnsupportedSongFormatException(formatVersion)
         // Upgrade older versions one step at a time before decoding.
         if (formatVersion < 2) document = document.upgradeFromVersion1()
+        if (formatVersion < 3) document = document.upgradeFromVersion2()
+        if (formatVersion < 4) document = document.upgradeFromVersion3()
         return songJson.decodeFromJsonElement(SongDocument.serializer(), document).toSong()
     }
 }
+
+/** Version 4 gave Notes a tie and Techniques (and added Chords): a version 3 Note has neither. */
+private fun JsonObject.upgradeFromVersion3(): JsonObject = withEachElement { element ->
+    if (element["type"]?.jsonPrimitive?.content != "note") return@withEachElement element
+    JsonObject(element + mapOf("tied" to JsonPrimitive(false), "techniques" to JsonArray(emptyList())))
+}.withFormatVersion(4)
 
 class UnsupportedSongFormatException(val formatVersion: Int) :
     IllegalArgumentException("Song format version $formatVersion is not supported by this version of Compass")
 
 /** Version 2 gave Durations a dot and a triplet: a version 1 duration is the bare note value. */
-private fun JsonObject.upgradeFromVersion1(): JsonObject {
+private fun JsonObject.upgradeFromVersion1(): JsonObject = withEachElement { it.withVersion2Duration() }.withFormatVersion(2)
+
+private fun JsonObject.withFormatVersion(version: Int): JsonObject = JsonObject(this + ("formatVersion" to JsonPrimitive(version)))
+
+/** This document with [change] applied to every Note and Rest of every Track. */
+private fun JsonObject.withEachElement(change: (JsonObject) -> JsonObject): JsonObject {
     val tracks = getValue("tracks").jsonArray.map { track ->
         val measures = track.jsonObject.getValue("measures").jsonArray.map { elements ->
-            JsonArray(elements.jsonArray.map { it.jsonObject.withVersion2Duration() })
+            JsonArray(elements.jsonArray.map { change(it.jsonObject) })
         }
         JsonObject(track.jsonObject + ("measures" to JsonArray(measures)))
     }
-    return JsonObject(this + mapOf("formatVersion" to JsonPrimitive(2), "tracks" to JsonArray(tracks)))
+    return JsonObject(this + ("tracks" to JsonArray(tracks)))
 }
 
 private fun JsonObject.withVersion2Duration(): JsonObject {
@@ -46,5 +59,9 @@ private fun JsonObject.withVersion2Duration(): JsonObject {
     )
     return JsonObject(this + ("duration" to duration))
 }
+
+/** Version 3 added Sections: a version 2 Song has none. */
+private fun JsonObject.upgradeFromVersion2(): JsonObject =
+    JsonObject(this + mapOf("formatVersion" to JsonPrimitive(3), "sections" to JsonArray(emptyList())))
 
 private val songJson = Json
