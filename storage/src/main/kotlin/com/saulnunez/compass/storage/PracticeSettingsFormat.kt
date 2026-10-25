@@ -24,6 +24,9 @@ private data class PracticeSettingsDocument(
     val loop: LoopDocument? = null,
     /** Added without a new format version: settings saved before it read the first Track. */
     val readTrack: Int = 0,
+    /** Added in version 3, as Track indices; earlier versions have every Track sounding. */
+    val mutedTracks: List<Int> = emptyList(),
+    val soloedTracks: List<Int> = emptyList(),
 )
 
 /** A Section Loop has [section]; a Measure-range Loop has [first] and [last] (all 0-based). */
@@ -56,6 +59,8 @@ internal object PracticeSettingsFormat {
                 is Loop.OfMeasures -> LoopDocument(first = loop.first, last = loop.last)
             },
             readTrack = settings.readTrack,
+            mutedTracks = settings.mutedTracks.sorted(),
+            soloedTracks = settings.soloedTracks.sorted(),
         ),
     )
 
@@ -77,6 +82,8 @@ internal object PracticeSettingsFormat {
             countIn = document.countIn,
             loop = document.loop?.toLoop(),
             readTrack = document.readTrack.coerceAtLeast(0),
+            mutedTracks = document.mutedTracks.filter { it >= 0 }.toSet(),
+            soloedTracks = document.soloedTracks.filter { it >= 0 }.toSet(),
         )
     }.getOrDefault(PracticeSettings())
 }
@@ -90,7 +97,7 @@ private fun LoopDocument.toLoop(): Loop? = runCatching {
     }
 }.getOrNull()
 
-/** Version 2 adds the Loop. */
-private const val PRACTICE_SETTINGS_FORMAT_VERSION = 2
+/** Version 2 adds the Loop; version 3 the muted and soloed Tracks. */
+private const val PRACTICE_SETTINGS_FORMAT_VERSION = 3
 
 private val json = Json { encodeDefaults = true }

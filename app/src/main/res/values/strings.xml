@@ -261,4 +261,9 @@
     <string name="field_last_measure">Last Measure</string>
     <string name="section_overlaps">These Measures belong to another Section.</string>
     <string name="remove_section">Remove Section</string>
+    <string name="track_mix_heading">Tracks</string>
+    <string name="track_mute">Mute</string>
+    <string name="track_solo">Solo</string>
+    <string name="track_mute_description">Mute %1$s</string>
+    <string name="track_solo_description">Solo %1$s</string>
 </resources>

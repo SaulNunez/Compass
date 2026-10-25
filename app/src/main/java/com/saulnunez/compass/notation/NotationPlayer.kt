@@ -57,6 +57,24 @@ class NotationPlayer internal constructor(private val playsOnTap: Boolean) {
         startTick = range?.startTick ?: 0.0
     }
 
+    /** The indices of the Tracks Playback leaves out (muted, or not in a solo); every Track plays when empty. */
+    var silencedTracks: Set<Int> = emptySet()
+        set(value) {
+            if (field == value) return
+            field = value
+            applyMutes()
+        }
+
+    /**
+     * Mutes alphaTab's channels to match [silencedTracks]. The Score's channels follow Track positions
+     * and change when the MIDI is reloaded for a rebuilt Score, so the mutes are always assigned again then.
+     */
+    private fun applyMutes() {
+        val player = api?.player ?: return
+        val score = api?.score ?: return
+        score.channelMutes { it !in silencedTracks }.forEach { (channel, isMuted) -> player.setChannelMute(channel.toDouble(), isMuted) }
+    }
+
     fun play() {
         if (api?.play() == true) onStarted()
     }
@@ -104,6 +122,7 @@ class NotationPlayer internal constructor(private val playsOnTap: Boolean) {
                 isReady = true
                 startTick = 0.0
                 applyLoop()
+                applyMutes()
             },
             api.playerStateChanged.on { isPlaying = it.state == PlayerState.Playing },
             // Measures are shared by every Track, so a bar's index is its Measure's index.

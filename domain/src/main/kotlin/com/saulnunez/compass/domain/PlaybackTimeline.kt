@@ -24,8 +24,9 @@ data class Click(val startMillis: Double, val isCountIn: Boolean)
 
 /**
  * Turns this Song and its [settings] into the [PlaybackTimeline] Playback follows when it starts at
- * Measure [fromMeasure] (0-based): every Tempo scaled by the tempo percentage, all Tracks together,
- * the click on every beat when it is on, and a single count-in before the first Measure.
+ * Measure [fromMeasure] (0-based): every Tempo scaled by the tempo percentage, all Tracks together
+ * except those muted or left out of a solo, the click on every beat when it is on, and a single
+ * count-in before the first Measure.
  *
  * With a Loop, Playback stays within the Loop's Measures (starting at its first Measure when
  * [fromMeasure] is outside it), plays to its last Measure and goes straight back to its first,
@@ -60,6 +61,7 @@ fun Song.playbackTimeline(settings: PracticeSettings, fromMeasure: Int = 0, pass
         if (settings.click) clicks += timing.beatStarts(measureStart).map { Click(it, isCountIn = false) }
 
         tracks.forEachIndexed { trackIndex, track ->
+            if (!settings.isHeard(trackIndex)) return@forEachIndexed
             var ticksBefore = 0
             track.voice.measures[index].forEach { element ->
                 val ticks = element.duration.ticks

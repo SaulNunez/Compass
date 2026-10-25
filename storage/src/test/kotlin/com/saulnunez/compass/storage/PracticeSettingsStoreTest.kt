@@ -180,4 +180,24 @@ class PracticeSettingsStoreTest {
         // Version 1 also predates the Track being read.
         assertEquals(practiced.copy(readTrack = 0), store.practiceSettings(song.id))
     }
+
+    @Test
+    fun `muted and soloed Tracks are restored when the Song is opened again`() {
+        val mixed = practiced.copy(mutedTracks = setOf(0, 2), soloedTracks = setOf(1))
+        val store = SongStore(folder.root).apply { save(song) }
+
+        store.savePracticeSettings(song.id, mixed)
+
+        assertEquals(mixed, SongStore(folder.root).practiceSettings(song.id))
+    }
+
+    @Test
+    fun `Practice settings saved before mute and solo existed open with every Track sounding`() {
+        val store = SongStore(folder.root).apply { save(song) }
+        folder.root.walk().single { it.isDirectory && it.name == "riff" }.resolve("practice-settings.json").writeText(
+            """{"formatVersion":2,"tempoPercentage":65,"shownViews":"both","click":true,"countIn":true,"loop":null,"readTrack":1}""",
+        )
+
+        assertEquals(practiced, store.practiceSettings(song.id))
+    }
 }

@@ -57,4 +57,36 @@ class PracticeSettingsReconciliationTest {
 
         assertEquals(settings.copy(readTrack = 0), session.reconcile(settings))
     }
+
+    /** Muting the rhythm guitar and the bass, soloing the lead and the bass. */
+    private val mix = PracticeSettings(mutedTracks = setOf(0, 2), soloedTracks = setOf(1, 2))
+
+    @Test
+    fun `muted and soloed Tracks are followed when a Track before them is removed`() {
+        val session = EditSession.start(song).removeTrack()
+
+        assertEquals(PracticeSettings(mutedTracks = setOf(1), soloedTracks = setOf(0, 1)), session.reconcile(mix))
+    }
+
+    @Test
+    fun `a removed Track's mute and solo are dropped, not passed to the Track that moves up`() {
+        val session = EditSession.start(song, track = 1).removeTrack()
+
+        assertEquals(PracticeSettings(mutedTracks = setOf(0, 1), soloedTracks = setOf(1)), session.reconcile(mix))
+    }
+
+    @Test
+    fun `a Track added in place of a removed one is neither muted nor soloed`() {
+        val session = EditSession.start(song, track = 2).removeTrack()
+            .addTrack("New bass", TuningPreset.BASS_STANDARD.instrument(), Sound.PICKED_BASS)
+
+        assertEquals(PracticeSettings(mutedTracks = setOf(0), soloedTracks = setOf(1)), session.reconcile(mix))
+    }
+
+    @Test
+    fun `undoing a removal brings back its mute and solo`() {
+        val session = EditSession.start(song, track = 2).removeTrack().undo()
+
+        assertEquals(mix, session.reconcile(mix))
+    }
 }
