@@ -11,6 +11,7 @@ import com.saulnunez.compass.domain.Pitch
 import com.saulnunez.compass.domain.Rest
 import com.saulnunez.compass.domain.Song
 import com.saulnunez.compass.domain.SongId
+import com.saulnunez.compass.domain.Sound
 import com.saulnunez.compass.domain.Tempo
 import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.domain.Track
@@ -51,7 +52,23 @@ internal data class TrackDocument(
     val instrument: InstrumentDocument,
     val openStrings: List<Int>,
     val measures: List<List<VoiceElementDocument>>,
+    /** Since format version 3. */
+    val sound: SoundDocument,
 )
+
+/** Since format version 3. */
+@Serializable
+internal enum class SoundDocument {
+    @SerialName("clean-electric-guitar") CLEAN_ELECTRIC_GUITAR,
+    @SerialName("overdriven-guitar") OVERDRIVEN_GUITAR,
+    @SerialName("distorted-electric-guitar") DISTORTED_ELECTRIC_GUITAR,
+    @SerialName("steel-acoustic-guitar") STEEL_ACOUSTIC_GUITAR,
+    @SerialName("nylon-acoustic-guitar") NYLON_ACOUSTIC_GUITAR,
+    @SerialName("fingered-bass") FINGERED_BASS,
+    @SerialName("picked-bass") PICKED_BASS,
+    @SerialName("slap-bass") SLAP_BASS,
+    @SerialName("fretless-bass") FRETLESS_BASS,
+}
 
 @Serializable
 internal enum class InstrumentDocument {
@@ -106,6 +123,7 @@ internal fun Song.toDocument() = SongDocument(
             instrument = track.instrument.kind.toDocument(),
             openStrings = track.instrument.tuning.openStrings.map { it.midi },
             measures = track.voice.measures.map { elements -> elements.map { it.toDocument() } },
+            sound = track.sound.toDocument(),
         )
     },
 )
@@ -118,6 +136,18 @@ private fun VoiceElement.toDocument(): VoiceElementDocument = when (this) {
 private fun InstrumentKind.toDocument() = when (this) {
     InstrumentKind.GUITAR -> InstrumentDocument.GUITAR
     InstrumentKind.BASS -> InstrumentDocument.BASS
+}
+
+private fun Sound.toDocument() = when (this) {
+    Sound.CLEAN_ELECTRIC_GUITAR -> SoundDocument.CLEAN_ELECTRIC_GUITAR
+    Sound.OVERDRIVEN_GUITAR -> SoundDocument.OVERDRIVEN_GUITAR
+    Sound.DISTORTED_ELECTRIC_GUITAR -> SoundDocument.DISTORTED_ELECTRIC_GUITAR
+    Sound.STEEL_ACOUSTIC_GUITAR -> SoundDocument.STEEL_ACOUSTIC_GUITAR
+    Sound.NYLON_ACOUSTIC_GUITAR -> SoundDocument.NYLON_ACOUSTIC_GUITAR
+    Sound.FINGERED_BASS -> SoundDocument.FINGERED_BASS
+    Sound.PICKED_BASS -> SoundDocument.PICKED_BASS
+    Sound.SLAP_BASS -> SoundDocument.SLAP_BASS
+    Sound.FRETLESS_BASS -> SoundDocument.FRETLESS_BASS
 }
 
 private fun Duration.toDocument() = DurationDocument(value.toDocument(), dotted = isDotted, triplet = isTriplet)
@@ -147,6 +177,7 @@ internal fun SongDocument.toSong() = Song(
             name = track.name,
             instrument = Instrument(track.instrument.toInstrumentKind(), Tuning(track.openStrings.map(::Pitch))),
             voice = Voice(track.measures.map { elements -> elements.map { it.toVoiceElement() } }),
+            sound = track.sound.toSound(),
         )
     },
 )
@@ -161,6 +192,18 @@ private fun InstrumentDocument.toInstrumentKind() = when (this) {
     InstrumentDocument.BASS -> InstrumentKind.BASS
 }
 
+private fun SoundDocument.toSound() = when (this) {
+    SoundDocument.CLEAN_ELECTRIC_GUITAR -> Sound.CLEAN_ELECTRIC_GUITAR
+    SoundDocument.OVERDRIVEN_GUITAR -> Sound.OVERDRIVEN_GUITAR
+    SoundDocument.DISTORTED_ELECTRIC_GUITAR -> Sound.DISTORTED_ELECTRIC_GUITAR
+    SoundDocument.STEEL_ACOUSTIC_GUITAR -> Sound.STEEL_ACOUSTIC_GUITAR
+    SoundDocument.NYLON_ACOUSTIC_GUITAR -> Sound.NYLON_ACOUSTIC_GUITAR
+    SoundDocument.FINGERED_BASS -> Sound.FINGERED_BASS
+    SoundDocument.PICKED_BASS -> Sound.PICKED_BASS
+    SoundDocument.SLAP_BASS -> Sound.SLAP_BASS
+    SoundDocument.FRETLESS_BASS -> Sound.FRETLESS_BASS
+}
+
 private fun DurationDocument.toDuration() = Duration(value.toNoteValue(), isDotted = dotted, isTriplet = triplet)
 
 private fun NoteValueDocument.toNoteValue() = when (this) {
@@ -172,4 +215,4 @@ private fun NoteValueDocument.toNoteValue() = when (this) {
     NoteValueDocument.THIRTY_SECOND -> NoteValue.THIRTY_SECOND
 }
 
-internal const val CURRENT_FORMAT_VERSION = 2
+internal const val CURRENT_FORMAT_VERSION = 3

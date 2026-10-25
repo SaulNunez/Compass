@@ -19,6 +19,8 @@ private data class PracticeSettingsDocument(
     val shownViews: ShownViewsDocument,
     val click: Boolean,
     val countIn: Boolean,
+    /** Added without a new format version: settings saved before it read the first Track. */
+    val readTrack: Int = 0,
 )
 
 @Serializable
@@ -41,6 +43,7 @@ internal object PracticeSettingsFormat {
             },
             click = settings.click,
             countIn = settings.countIn,
+            readTrack = settings.readTrack,
         ),
     )
 
@@ -60,6 +63,7 @@ internal object PracticeSettingsFormat {
             },
             click = document.click,
             countIn = document.countIn,
+            readTrack = document.readTrack.coerceAtLeast(0),
         )
     }.getOrDefault(PracticeSettings())
 }

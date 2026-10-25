@@ -8,6 +8,8 @@ import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Rest
 import com.saulnunez.compass.domain.SongId
+import com.saulnunez.compass.domain.Sound
+import com.saulnunez.compass.domain.Track
 import com.saulnunez.compass.domain.Tempo
 import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.domain.TuningPreset
@@ -50,6 +52,43 @@ class SongFormatTest {
         )
 
         assertEquals(written, SongFormat.decode(SongFormat.encode(written)))
+    }
+
+    @Test
+    fun `each Track's Sound survives a save and load`() {
+        val band = song.copy(
+            tracks = song.tracks.map { it.copy(sound = Sound.NYLON_ACOUSTIC_GUITAR) } +
+                Track("Bass", TuningPreset.BASS_FIVE_STRING_STANDARD.instrument(), Voice(List(song.measures.size) { emptyList() }), Sound.FRETLESS_BASS),
+        )
+
+        assertEquals(band, SongFormat.decode(SongFormat.encode(band)))
+    }
+
+    @Test
+    fun `a version 2 document is upgraded on load, its Tracks getting the default Sounds`() {
+        val versionTwo = """
+            {
+              "formatVersion": 2,
+              "id": "duo",
+              "title": "Duo",
+              "artist": "",
+              "measures": [{ "beats": 4, "beatUnit": 4, "keyFifths": 0, "keyIsMinor": false, "tempo": 100 }],
+              "tracks": [
+                {
+                  "name": "Guitar",
+                  "instrument": "guitar",
+                  "openStrings": [64, 59, 55, 50, 45, 40],
+                  "measures": [[{ "type": "note", "string": 1, "fret": 5, "duration": { "value": "quarter", "dotted": true, "triplet": false } }]]
+                },
+                { "name": "Bass", "instrument": "bass", "openStrings": [43, 38, 33, 28], "measures": [[]] }
+              ]
+            }
+        """.trimIndent()
+
+        val song = SongFormat.decode(versionTwo)
+
+        assertEquals(listOf(Sound.CLEAN_ELECTRIC_GUITAR, Sound.FINGERED_BASS), song.tracks.map { it.sound })
+        assertEquals(listOf(Note(1, 5, Duration(NoteValue.QUARTER, isDotted = true))), song.tracks[0].voice.measures.single())
     }
 
     @Test

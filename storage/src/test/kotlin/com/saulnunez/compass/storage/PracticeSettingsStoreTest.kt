@@ -40,6 +40,7 @@ class PracticeSettingsStoreTest {
         shownViews = ShownViews.BOTH,
         click = true,
         countIn = true,
+        readTrack = 1,
     )
 
     @Test
@@ -50,6 +51,19 @@ class PracticeSettingsStoreTest {
         }
 
         assertEquals(practiced, SongStore(folder.root).practiceSettings(song.id))
+    }
+
+    @Test
+    fun `Practice settings saved before the Track being read was remembered read the first Track`() {
+        val store = SongStore(folder.root).apply { save(song) }
+        folder.root.walk().single { it.isDirectory && it.name == "riff" }.resolve("practice-settings.json").writeText(
+            """{"formatVersion":1,"tempoPercentage":70,"shownViews":"both","click":false,"countIn":true}""",
+        )
+
+        assertEquals(
+            PracticeSettings(TempoPercentage(70), ShownViews.BOTH, click = false, countIn = true, readTrack = 0),
+            store.practiceSettings(song.id),
+        )
     }
 
     @Test

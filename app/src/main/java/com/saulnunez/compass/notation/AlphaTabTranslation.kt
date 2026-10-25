@@ -17,6 +17,7 @@ import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Rest
 import com.saulnunez.compass.domain.Song
+import com.saulnunez.compass.domain.Sound
 import com.saulnunez.compass.domain.Track
 import alphaTab.model.Duration as AlphaTabDuration
 import alphaTab.model.KeySignature as AlphaTabKeySignature
@@ -76,7 +77,7 @@ private fun Track.toAlphaTabTrack(index: Int): AlphaTabTrack {
     alphaTabTrack.name = name
     alphaTabTrack.playbackInfo.apply {
         // Set before score.finish, which carries the program into the Track's first beat.
-        program = instrument.kind.generalMidiProgram().toDouble()
+        program = sound.generalMidiProgram().toDouble()
         // Every Track needs channels of its own so its Sound, mute/solo and bends don't leak into other
         // Tracks; alphaTab gives each Track two (the second carries bends).
         primaryChannel = PLAYBACK_CHANNELS[(index * 2) % PLAYBACK_CHANNELS.size].toDouble()
@@ -134,13 +135,17 @@ private fun NoteValue.toAlphaTab(): AlphaTabDuration = when (this) {
 
 private fun KeySignature.toAlphaTab(): AlphaTabKeySignature = AlphaTabKeySignature.fromValue(fifths.toDouble())
 
-/**
- * The General MIDI Sound a Track plays with until Tracks get a choice of Sound (#9):
- * clean electric guitar and fingered bass.
- */
-private fun InstrumentKind.generalMidiProgram(): Int = when (this) {
-    InstrumentKind.GUITAR -> 27
-    InstrumentKind.BASS -> 33
+/** The General MIDI program (0-based) that synthesizes each Sound. */
+private fun Sound.generalMidiProgram(): Int = when (this) {
+    Sound.NYLON_ACOUSTIC_GUITAR -> 24
+    Sound.STEEL_ACOUSTIC_GUITAR -> 25
+    Sound.CLEAN_ELECTRIC_GUITAR -> 27
+    Sound.OVERDRIVEN_GUITAR -> 29
+    Sound.DISTORTED_ELECTRIC_GUITAR -> 30
+    Sound.FINGERED_BASS -> 33
+    Sound.PICKED_BASS -> 34
+    Sound.FRETLESS_BASS -> 35
+    Sound.SLAP_BASS -> 36
 }
 
 /**

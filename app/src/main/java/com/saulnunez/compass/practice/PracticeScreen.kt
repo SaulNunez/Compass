@@ -43,6 +43,7 @@ import com.saulnunez.compass.notation.NotationView
 import com.saulnunez.compass.notation.playerControls
 import com.saulnunez.compass.notation.rememberNotationPlayer
 import com.saulnunez.compass.ui.BackToLibraryButton
+import com.saulnunez.compass.ui.Dropdown
 import com.saulnunez.compass.ui.theme.CompassTheme
 import kotlin.math.roundToInt
 
@@ -50,7 +51,7 @@ import kotlin.math.roundToInt
  * Practice mode: reads and plays a Song without any way to change it. The only way to change the
  * Song is the explicit [onEdit] action, which switches to Edit mode. Changes to the [settings]
  * (the Song's Practice settings) go to [onSettingsChange]; [onPlaybackStarted] is called each
- * time Playback starts. The screen stays on.
+ * time Playback starts. The screen stays on. Every Track plays; the views show the Track being read.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,7 +100,19 @@ fun PracticeScreen(
             )
         },
     ) { innerPadding ->
+        // Settings saved for a Track that is gone fall back to the first.
+        val readTrack = settings.readTrack.takeIf { it in song.tracks.indices } ?: 0
         Column(Modifier.padding(innerPadding).fillMaxSize()) {
+            if (song.tracks.size > 1) {
+                Dropdown(
+                    label = stringResource(R.string.field_read_track),
+                    options = song.tracks.indices.toList(),
+                    selected = readTrack,
+                    optionLabel = { song.tracks[it].name },
+                    onSelect = { onSettingsChange(settings.copy(readTrack = it)) },
+                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp),
+                )
+            }
             ShownViewsChoice(
                 selected = settings.shownViews,
                 onSelect = { onSettingsChange(settings.copy(shownViews = it)) },
@@ -111,6 +124,7 @@ fun PracticeScreen(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 player = player,
                 controls = settings.playerControls(),
+                track = readTrack,
             )
             PlaybackControls(
                 player = player,

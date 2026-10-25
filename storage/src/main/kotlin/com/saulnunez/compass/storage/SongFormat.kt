@@ -22,6 +22,7 @@ object SongFormat {
         if (formatVersion !in 1..CURRENT_FORMAT_VERSION) throw UnsupportedSongFormatException(formatVersion)
         // Upgrade older versions one step at a time before decoding.
         if (formatVersion < 2) document = document.upgradeFromVersion1()
+        if (formatVersion < 3) document = document.upgradeFromVersion2()
         return songJson.decodeFromJsonElement(SongDocument.serializer(), document).toSong()
     }
 }
@@ -45,6 +46,18 @@ private fun JsonObject.withVersion2Duration(): JsonObject {
         mapOf("value" to getValue("duration"), "dotted" to JsonPrimitive(false), "triplet" to JsonPrimitive(false)),
     )
     return JsonObject(this + ("duration" to duration))
+}
+
+/** Version 3 gave each Track a Sound: a version 2 Track plays with its Instrument's default Sound. */
+private fun JsonObject.upgradeFromVersion2(): JsonObject {
+    val tracks = getValue("tracks").jsonArray.map { track ->
+        val sound = when (track.jsonObject.getValue("instrument").jsonPrimitive.content) {
+            "bass" -> "fingered-bass"
+            else -> "clean-electric-guitar"
+        }
+        JsonObject(track.jsonObject + ("sound" to JsonPrimitive(sound)))
+    }
+    return JsonObject(this + mapOf("formatVersion" to JsonPrimitive(3), "tracks" to JsonArray(tracks)))
 }
 
 private val songJson = Json

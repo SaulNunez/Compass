@@ -8,6 +8,8 @@ import alphaTab.midi.NoteOnEvent
 import alphaTab.midi.ProgramChangeEvent
 import alphaTab.midi.TempoChangeEvent
 import com.saulnunez.compass.domain.Duration
+import com.saulnunez.compass.domain.InstrumentKind
+import com.saulnunez.compass.domain.Sound
 import com.saulnunez.compass.domain.KeySignature
 import com.saulnunez.compass.domain.Measure
 import com.saulnunez.compass.domain.Note
@@ -54,14 +56,26 @@ class AlphaTabPlaybackTest {
         tracks = listOf(guitar, bass),
     )
 
-    private val midi: MidiFile = run {
+    private fun midiOf(song: Song): MidiFile {
         val settings = Settings()
         val midiFile = MidiFile()
         MidiFileGenerator(song.toAlphaTabScore(settings), settings, AlphaSynthMidiFileHandler(midiFile)).generate()
-        midiFile
+        return midiFile
     }
 
+    private val midi: MidiFile = midiOf(song)
+
     private val noteOns get() = midi.events.toList().filterIsInstance<NoteOnEvent>()
+
+    /** The General MIDI program each Track of [song] plays with, by Track index. */
+    private fun programsOf(song: Song): List<Int> {
+        val score = song.toAlphaTabScore(Settings())
+        val events = midiOf(song).events.toList().filterIsInstance<ProgramChangeEvent>()
+        return (0 until score.tracks.length.toInt()).map { index ->
+            val channel = score.tracks[index].playbackInfo.primaryChannel.toInt()
+            events.last { it.channel.toInt() == channel }.program.toInt()
+        }
+    }
 
     @Test
     fun `alphaTab plays every Note when the playback timeline says, Tempo changes included`() {
@@ -93,6 +107,38 @@ class AlphaTabPlaybackTest {
 
         assertEquals(CLEAN_ELECTRIC_GUITAR, programs[guitarChannel])
         assertEquals(FINGERED_BASS, programs[bassChannel])
+    }
+
+    @Test
+    fun `each Sound plays with its General MIDI program`() {
+        val expected = mapOf(
+            Sound.CLEAN_ELECTRIC_GUITAR to 27,
+            Sound.OVERDRIVEN_GUITAR to 29,
+            Sound.DISTORTED_ELECTRIC_GUITAR to 30,
+            Sound.STEEL_ACOUSTIC_GUITAR to 25,
+            Sound.NYLON_ACOUSTIC_GUITAR to 24,
+            Sound.FINGERED_BASS to 33,
+            Sound.PICKED_BASS to 34,
+            Sound.SLAP_BASS to 36,
+            Sound.FRETLESS_BASS to 35,
+        )
+        // A Song per Instrument, since 9 Tracks would be more than the channels go round.
+        for (kind in InstrumentKind.entries) {
+            val sounds = Sound.choicesFor(kind)
+            val tracks = sounds.map { (if (kind == InstrumentKind.GUITAR) guitar else bass).copy(sound = it) }
+
+            assertEquals(sounds.map { expected.getValue(it) }, programsOf(song.copy(tracks = tracks)))
+        }
+    }
+
+    @Test
+    fun `every Track plays together, each at the pitches of its own Tuning`() {
+        val retuned = song.copy(tracks = listOf(guitar.copy(instrument = TuningPreset.GUITAR_D_STANDARD.instrument()), bass))
+        val starts = midiOf(retuned).events.toList().filterIsInstance<NoteOnEvent>()
+            .filter { it.tick == 0.0 }.map { it.noteKey.toInt() }.sorted()
+
+        // String 1 open in D standard is D4 (62), against E4 (64) in standard; the bass's open E1 (28) is unchanged.
+        assertEquals(listOf(28, 62), starts)
     }
 
     /** Milliseconds from the start of the MIDI to [tick], following its tempo changes. */

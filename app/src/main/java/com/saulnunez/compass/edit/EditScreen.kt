@@ -67,8 +67,8 @@ import com.saulnunez.compass.practice.demoSong
 import com.saulnunez.compass.ui.theme.CompassTheme
 
 /**
- * Edit mode: writes Notes and Rests into the Tablature of a Song's first Track through
- * [session]. Every action hands the next session to [onSessionChange]; [onDone] switches back
+ * Edit mode: adds, removes and changes a Song's Tracks and writes Notes and Rests into the
+ * Tablature of the Track being edited, through [session]. Every action hands the next session to [onSessionChange]; [onDone] switches back
  * to Practice mode.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -103,8 +103,9 @@ fun EditScreen(
         },
     ) { innerPadding ->
         Column(Modifier.padding(innerPadding).fillMaxSize()) {
-            TablatureView(song, Modifier.weight(1f).fillMaxWidth())
+            TablatureView(song, session.track, Modifier.weight(1f).fillMaxWidth())
             HorizontalDivider()
+            TrackTools(session, onSessionChange)
             MeasureStrip(session, onSessionChange)
             MeasureTools(session, onSessionChange)
             MeasureEditor(session)
@@ -112,6 +113,57 @@ fun EditScreen(
             CursorPad(session, onSessionChange)
             NumberPad(onDigit = { onSessionChange(session.typeDigit(it)) })
         }
+    }
+}
+
+/** Picks the Track being edited, adds a Track, and opens the edited Track's settings. */
+@Composable
+private fun TrackTools(session: EditSession, onSessionChange: (EditSession) -> Unit) {
+    var adding by rememberSaveable { mutableStateOf(false) }
+    var changing by rememberSaveable { mutableStateOf(false) }
+    val tracks = session.song.tracks
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+    ) {
+        Dropdown(
+            label = stringResource(R.string.field_edited_track),
+            options = tracks.indices.toList(),
+            selected = session.track,
+            optionLabel = { tracks[it].name },
+            onSelect = { onSessionChange(session.editTrack(it)) },
+            modifier = Modifier.weight(1f),
+        )
+        OutlinedButton(onClick = { changing = true }) { Text(stringResource(R.string.track_settings)) }
+        OutlinedButton(onClick = { adding = true }) { Text(stringResource(R.string.add_track)) }
+    }
+    if (adding) {
+        NewTrackDialog(
+            onAdd = { name, instrument, sound ->
+                adding = false
+                onSessionChange(session.addTrack(name, instrument, sound))
+            },
+            onDismiss = { adding = false },
+        )
+    }
+    if (changing) {
+        TrackSettingsDialog(
+            track = tracks[session.track],
+            onApply = { name, tuning, sound ->
+                changing = false
+                onSessionChange(session.changeTrack(name, tuning, sound))
+            },
+            onRemove = if (session.canRemoveTrack) {
+                {
+                    changing = false
+                    onSessionChange(session.removeTrack())
+                }
+            } else {
+                null
+            },
+            onDismiss = { changing = false },
+        )
     }
 }
 
@@ -126,7 +178,7 @@ private fun MeasureStrip(session: EditSession, onSessionChange: (EditSession) ->
         contentPadding = PaddingValues(horizontal = 8.dp),
     ) {
         itemsIndexed(session.song.measures) { index, _ ->
-            val fill = session.song.measureFill(track = 0, measure = index)
+            val fill = session.song.measureFill(track = session.track, measure = index)
             val flagged = fill == MeasureFill.INCOMPLETE || fill == MeasureFill.OVERFULL
             val description = measureDescription(index + 1, fill)
             FilterChip(
@@ -250,10 +302,10 @@ private fun MeasureSettingsDialog(measureNumber: Int, current: Measure, onApply:
 /** The cursor's Measure as a grid of strings by beats, the cursor's cell highlighted. */
 @Composable
 private fun MeasureEditor(session: EditSession) {
-    val track = session.song.tracks[0]
+    val track = session.song.tracks[session.track]
     val measure = session.cursor.measure
     val elements = track.voice.measures[measure]
-    val fill = session.song.measureFill(track = 0, measure = measure)
+    val fill = session.song.measureFill(track = session.track, measure = measure)
     val hasFreeBeat = fill == MeasureFill.UNWRITTEN || fill == MeasureFill.INCOMPLETE
     val columns = elements.size + if (hasFreeBeat) 1 else 0
 
