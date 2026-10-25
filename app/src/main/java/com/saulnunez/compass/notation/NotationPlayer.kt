@@ -8,13 +8,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.saulnunez.compass.domain.Cursor
 
 /**
  * Starts and stops Playback of the Song a [NotationView] shows, and tells Compose whether it is
- * playing. Tapping a Measure in the view starts Playback there.
+ * playing. If [playsOnTap], tapping a Measure in the view starts Playback there.
  */
 @Stable
-class NotationPlayer internal constructor() {
+class NotationPlayer internal constructor(private val playsOnTap: Boolean) {
 
     /** Whether the Sounds and the Song are loaded, so Playback can start. */
     var isReady by mutableStateOf(false)
@@ -34,6 +35,16 @@ class NotationPlayer internal constructor() {
 
     fun play() {
         if (api?.play() == true) onStarted()
+    }
+
+    /** Starts Playback at the Edit mode [cursor] in the first Track; Stop goes back there. */
+    fun playFrom(cursor: Cursor) {
+        val api = api ?: return
+        val score = api.score ?: return
+        val tickCache = api.tickCache ?: return
+        startTick = tickCache.startTickOf(score, cursor)
+        api.tickPosition = startTick
+        if (!isPlaying) play()
     }
 
     /** Stops Playback and goes back to where it started. */
@@ -59,7 +70,7 @@ class NotationPlayer internal constructor() {
         startTick = 0.0
         isReady = api.isReadyForPlayback
         isPlaying = api.playerState == PlayerState.Playing
-        unsubscribe = listOf(
+        unsubscribe = listOfNotNull(
             // Fires again whenever the MIDI is reloaded; the position is back at the start then.
             api.playerReady.on {
                 isReady = true
@@ -67,7 +78,7 @@ class NotationPlayer internal constructor() {
             },
             api.playerStateChanged.on { isPlaying = it.state == PlayerState.Playing },
             // Measures are shared by every Track, so a bar's index is its Measure's index.
-            api.beatMouseDown.on { beat -> playFrom(beat.voice.bar.index.toInt()) },
+            if (playsOnTap) api.beatMouseDown.on { beat -> playFrom(beat.voice.bar.index.toInt()) } else null,
         )
     }
 
@@ -80,5 +91,6 @@ class NotationPlayer internal constructor() {
     }
 }
 
+/** A [NotationPlayer]; with [playsOnTap], tapping a Measure in the view starts Playback there. */
 @Composable
-fun rememberNotationPlayer(): NotationPlayer = remember { NotationPlayer() }
+fun rememberNotationPlayer(playsOnTap: Boolean = true): NotationPlayer = remember(playsOnTap) { NotationPlayer(playsOnTap) }

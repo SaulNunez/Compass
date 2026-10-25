@@ -12,6 +12,7 @@
 
     <!-- Modo práctica: reproducción -->
     <string name="playback_play">Reproducir</string>
+    <string name="playback_play_from_cursor">Reproducir desde el cursor</string>
     <string name="playback_stop">Detener</string>
     <string name="playback_click">Metrónomo</string>
     <string name="playback_count_in">Cuenta previa</string>
