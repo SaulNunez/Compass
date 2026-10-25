@@ -19,12 +19,85 @@ data class WriteElement(val track: Int, val measure: Int, val beat: Int, val ele
     }
 }
 
-/** Gives the Note or Rest at [beat] a new [duration]. */
+/**
+ * Writes [note] on its string at [beat]. A Note already on that string is replaced; Notes on
+ * other strings stay, so the beat becomes a Chord and [note] takes their Duration. A Rest is
+ * replaced; [beat] one past the last element appends [note].
+ */
+data class WriteNote(val track: Int, val measure: Int, val beat: Int, val note: Note) : Edit {
+    override fun applyTo(song: Song): Song = song.editMeasure(track, measure) { elements ->
+        require(beat in 0..elements.size) { "Beat $beat is outside Measure ${measure + 1}" }
+        val existing = elements.getOrNull(beat) ?: return@editMeasure elements + note
+        val others = existing.notes.filter { it.string != note.string }
+        val duration = if (others.isEmpty()) note.duration else existing.duration
+        elements.toMutableList().apply { set(beat, elementOf(others + note.copy(duration = duration), duration)) }
+    }
+}
+
+/** Removes the Note on [string] from the Chord at [beat], leaving its other Notes. */
+data class DeleteNote(val track: Int, val measure: Int, val beat: Int, val string: Int) : Edit {
+    override fun applyTo(song: Song): Song = song.editMeasure(track, measure) { elements ->
+        val chord = elements[beat]
+        require(chord is Chord && chord.noteOn(string) != null) { "No Chord Note on string $string at beat ${beat + 1}" }
+        elements.toMutableList().apply { set(beat, elementOf(chord.notes.filter { it.string != string }, chord.duration)) }
+    }
+}
+
+/**
+ * Ties the Note on [string] at [beat] to the Note just before it on the same string, which
+ * may be in the previous Measure, giving it that fret; or unties it when [isTied] is false.
+ */
+data class SetTie(val track: Int, val measure: Int, val beat: Int, val string: Int, val isTied: Boolean) : Edit {
+    override fun applyTo(song: Song): Song {
+        if (isTied) {
+            requireNotNull(song.tracks[track].voice.elementBefore(measure, beat)?.noteOn(string)) {
+                "No Note before beat ${beat + 1} on string $string to tie to"
+            }
+        }
+        return song.editMeasure(track, measure) { elements ->
+            elements.toMutableList().apply {
+                set(beat, get(beat).mapNotes { if (it.string == string) it.copy(isTied = isTied) else it })
+            }
+        }
+    }
+}
+
+/**
+ * Adds [technique] to the Note on [string] at [beat], taking off any Technique it cannot be
+ * played with; or takes it off when [isAdded] is false.
+ */
+data class SetTechnique(
+    val track: Int,
+    val measure: Int,
+    val beat: Int,
+    val string: Int,
+    val technique: Technique,
+    val isAdded: Boolean,
+) : Edit {
+    override fun applyTo(song: Song): Song {
+        require(!isAdded || technique.isOfferedOn(song.tracks[track].instrument.kind)) {
+            "$technique is not played on ${song.tracks[track].instrument.kind}"
+        }
+        return song.editMeasure(track, measure) { elements ->
+            require(elements[beat].noteOn(string) != null) { "No Note on string $string at beat ${beat + 1}" }
+            elements.toMutableList().apply {
+                set(beat, get(beat).mapNotes { note ->
+                    if (note.string != string) return@mapNotes note
+                    val kept = note.techniques.filterNot { it == technique || technique.excludes(it) }.toSet()
+                    note.copy(techniques = if (isAdded) kept + technique else kept)
+                })
+            }
+        }
+    }
+}
+
+/** Gives the Note, Chord or Rest at [beat] a new [duration]. */
 data class ChangeDuration(val track: Int, val measure: Int, val beat: Int, val duration: Duration) : Edit {
     override fun applyTo(song: Song): Song = song.editMeasure(track, measure) { elements ->
         elements.toMutableList().apply {
             set(beat, when (val element = get(beat)) {
                 is Note -> element.copy(duration = duration)
+                is Chord -> Chord(element.notes.map { it.copy(duration = duration) })
                 is Rest -> element.copy(duration = duration)
             })
         }
@@ -61,7 +134,7 @@ data class DeleteMeasure(val measure: Int) : Edit {
         return song.copy(
             measures = song.measures.toMutableList().apply { removeAt(measure) },
             tracks = song.tracks.map { track ->
-                track.copy(voice = Voice(track.voice.measures.toMutableList().apply { removeAt(measure) }))
+                track.copy(voice = Voice(track.voice.measures.toMutableList().apply { removeAt(measure) }).withTiesFollowed())
             },
             sections = song.sections.mapNotNull { section ->
                 when {
@@ -178,7 +251,7 @@ private fun Song.insertMeasures(at: Int, measures: List<Measure>, trackMeasures:
     return copy(
         measures = this.measures.toMutableList().apply { addAll(at, measures) },
         tracks = tracks.mapIndexed { index, track ->
-            track.copy(voice = Voice(track.voice.measures.toMutableList().apply { addAll(at, trackMeasures[index]) }))
+            track.copy(voice = Voice(track.voice.measures.toMutableList().apply { addAll(at, trackMeasures[index]) }).withTiesFollowed())
         },
         sections = sections.map { section ->
             when {
@@ -201,6 +274,6 @@ private fun <T> Song.changeFrom(measure: Int, setting: (Measure) -> T, change: (
 }
 
 private fun Song.editMeasure(track: Int, measure: Int, change: (List<VoiceElement>) -> List<VoiceElement>): Song {
-    val edited = tracks[track].let { it.copy(voice = Voice(it.voice.measures.toMutableList().apply { set(measure, change(get(measure))) })) }
+    val edited = tracks[track].let { it.copy(voice = Voice(it.voice.measures.toMutableList().apply { set(measure, change(get(measure))) }).withTiesFollowed()) }
     return copy(tracks = tracks.toMutableList().apply { set(track, edited) })
 }

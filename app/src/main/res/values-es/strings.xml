@@ -38,6 +38,17 @@
     <string name="triplet">Tresillo</string>
     <string name="rest">Silencio</string>
     <string name="rest_short">S</string>
+    <string name="techniques">Técnicas de la nota del cursor</string>
+    <string name="tie">Ligadura</string>
+    <string name="technique_hammer_on_pull_off">Hammer-on/pull-off</string>
+    <string name="technique_slide">Slide</string>
+    <string name="technique_bend">Bend</string>
+    <string name="technique_bend_and_release">Bend y regreso</string>
+    <string name="technique_vibrato">Vibrato</string>
+    <string name="technique_palm_mute">Palm mute</string>
+    <string name="technique_dead_note">Nota muerta</string>
+    <string name="technique_slap">Slap</string>
+    <string name="technique_pop">Pop</string>
     <string name="cursor_previous_measure">Compás anterior</string>
     <string name="cursor_next_measure">Compás siguiente</string>
     <string name="cursor_previous_beat">Tiempo anterior</string>

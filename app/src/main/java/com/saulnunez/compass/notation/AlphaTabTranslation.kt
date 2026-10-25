@@ -6,17 +6,22 @@ import alphaTab.model.Automation
 import alphaTab.model.Bar
 import alphaTab.model.Clef
 import alphaTab.model.Beat
+import alphaTab.model.BendPoint
+import alphaTab.model.BendType
 import alphaTab.model.KeySignatureType
 import alphaTab.model.MasterBar
 import alphaTab.model.Score
 import alphaTab.model.Section as AlphaTabSection
+import alphaTab.model.SlideOutType
 import alphaTab.model.Staff
+import alphaTab.model.VibratoType
 import alphaTab.model.Voice
 import com.saulnunez.compass.domain.InstrumentKind
 import com.saulnunez.compass.domain.KeySignature
 import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.NoteValue
-import com.saulnunez.compass.domain.Rest
+import com.saulnunez.compass.domain.Technique
+import com.saulnunez.compass.domain.notes
 import com.saulnunez.compass.domain.Song
 import com.saulnunez.compass.domain.Track
 import alphaTab.model.Duration as AlphaTabDuration
@@ -60,6 +65,8 @@ fun Song.toAlphaTabScore(settings: Settings): Score {
         alphaTabBarsFor(track).forEach(alphaTabTrack.staves[0]::addBar)
     }
 
+    // Compass has no dynamics; without this alphaTab draws its default forte under the first Note.
+    score.stylesheet.hideDynamics = true
     score.finish(settings)
     return score
 }
@@ -113,19 +120,43 @@ private fun Track.alphaTabVoiceFor(measureIndex: Int): Voice {
             beat.tupletNumerator = 3.0
             beat.tupletDenominator = 2.0
         }
-        when (element) {
-            is Note -> beat.addNote(
-                AlphaTabNote().apply {
-                    // alphaTab counts strings from the lowest; Compass counts from the highest.
-                    string = (instrument.stringCount - element.string + 1).toDouble()
-                    fret = element.fret.toDouble()
-                },
-            )
-            is Rest -> Unit
-        }
+        // A Chord is one beat with a Note per string; a Rest is a beat with none.
+        element.notes.forEach { beat.addNote(it.toAlphaTab(instrument.stringCount)) }
+        // alphaTab marks slap and pop on the beat rather than on each Note.
+        beat.slap = element.notes.any { Technique.SLAP in it.techniques }
+        beat.pop = element.notes.any { Technique.POP in it.techniques }
         alphaTabVoice.addBeat(beat)
     }
     return alphaTabVoice
+}
+
+private fun Note.toAlphaTab(stringCount: Int): AlphaTabNote = AlphaTabNote().also { note ->
+    // alphaTab counts strings from the lowest; Compass counts from the highest.
+    note.string = (stringCount - string + 1).toDouble()
+    note.fret = fret.toDouble()
+    // alphaTab finds the Note it is tied to (the one before it on the same string) in Score.finish.
+    note.isTieDestination = isTied
+    techniques.forEach { technique ->
+        when (technique) {
+            // The Note it leads into (the next one on the string) is found in Score.finish.
+            Technique.HAMMER_ON_PULL_OFF -> note.isHammerPullOrigin = true
+            Technique.SLIDE -> note.slideOutType = SlideOutType.Legato
+            Technique.BEND -> note.bend(BendPoint(0.0, 0.0), BendPoint(BEND_PEAK, WHOLE_STEP), BendPoint(BEND_END, WHOLE_STEP))
+            Technique.BEND_AND_RELEASE -> note.bend(
+                BendPoint(0.0, 0.0), BendPoint(BEND_PEAK, WHOLE_STEP), BendPoint(RELEASE_START, WHOLE_STEP), BendPoint(BEND_END, 0.0),
+            )
+            Technique.VIBRATO -> note.vibrato = VibratoType.Slight
+            Technique.PALM_MUTE -> note.isPalmMute = true
+            Technique.DEAD_NOTE -> note.isDead = true
+            Technique.SLAP, Technique.POP -> Unit
+        }
+    }
+}
+
+/** Score.finish reads Custom bend points as a bend, bend and release, etc. by their shape. */
+private fun AlphaTabNote.bend(vararg points: BendPoint) {
+    bendType = BendType.Custom
+    points.forEach(::addBendPoint)
 }
 
 private fun NoteValue.toAlphaTab(): AlphaTabDuration = when (this) {
@@ -138,6 +169,14 @@ private fun NoteValue.toAlphaTab(): AlphaTabDuration = when (this) {
 }
 
 private fun KeySignature.toAlphaTab(): AlphaTabKeySignature = AlphaTabKeySignature.fromValue(fifths.toDouble())
+
+/** A bend's height in alphaTab's quarter tones. */
+private const val WHOLE_STEP = 4.0
+
+/** Positions along a bent Note, from 0 (its start) to 60 (its end). */
+private const val BEND_PEAK = 15.0
+private const val RELEASE_START = 30.0
+private const val BEND_END = 60.0
 
 /**
  * The General MIDI Sound a Track plays with until Tracks get a choice of Sound (#9):

@@ -46,6 +46,7 @@ class EditSession private constructor(
     /**
      * Writes [digit] as the fret of a Note on the cursor's string. A digit typed straight after
      * another one makes a two-digit fret with it (1 then 2 is fret 12), up to [HIGHEST_FRET].
+     * Notes already on other strings at the cursor stay, making a Chord.
      */
     fun typeDigit(digit: Int): EditSession {
         require(digit in 0..9) { "Not a digit: $digit" }
@@ -53,7 +54,7 @@ class EditSession private constructor(
         val fret = twoDigitFret ?: digit
         // The second digit of a two-digit fret amends the first, so both are undone together.
         val note = Note(cursor.string, fret, duration)
-        val written = apply(WriteElement(track, cursor.measure, cursor.beat, note), isNewEdit = twoDigitFret == null)
+        val written = apply(WriteNote(track, cursor.measure, cursor.beat, note), isNewEdit = twoDigitFret == null)
         val canTakeAnotherDigit = twoDigitFret == null && fret != 0 && fret * 10 <= HIGHEST_FRET
         return written.copy(pendingDigit = if (canTakeAnotherDigit) fret else null)
     }
@@ -70,12 +71,45 @@ class EditSession private constructor(
     /** Makes the chosen Duration a triplet or not, like [chooseNoteValue]. */
     fun toggleTriplet(): EditSession = chooseDuration(duration.copy(isTriplet = !duration.isTriplet))
 
+    /** The Note on the cursor's string at the cursor's beat, if any. */
+    val noteAtCursor: Note? get() = elementAtCursor?.noteOn(cursor.string)
+
+    /** Whether the Note at the cursor is tied, or could be: there is a Note just before it on its string. */
+    val canTie: Boolean
+        get() = noteAtCursor != null &&
+            song.tracks[track].voice.elementBefore(cursor.measure, cursor.beat)?.noteOn(cursor.string) != null
+
+    /** Ties the Note at the cursor to the Note just before it on its string, or unties it. */
+    fun toggleTie(): EditSession {
+        val note = noteAtCursor ?: return this
+        if (!canTie) return this
+        return apply(SetTie(track, cursor.measure, cursor.beat, cursor.string, isTied = !note.isTied))
+    }
+
+    /** The Techniques the Track's Instrument offers, in toolbar order. */
+    val availableTechniques: List<Technique>
+        get() = Technique.offeredOn(song.tracks[track].instrument.kind)
+
+    /** Adds [technique] to the Note at the cursor (replacing one it cannot be played with), or takes it off. */
+    fun toggleTechnique(technique: Technique): EditSession {
+        val note = noteAtCursor ?: return this
+        if (technique !in availableTechniques) return this
+        val isAdded = technique !in note.techniques
+        return apply(SetTechnique(track, cursor.measure, cursor.beat, cursor.string, technique, isAdded))
+    }
+
     /** Writes a Rest at the cursor, replacing the Note there but keeping its Duration. */
     fun writeRest(): EditSession = apply(WriteElement(track, cursor.measure, cursor.beat, Rest(duration)))
 
-    /** Removes the Note or Rest under the cursor; the cursor stays on the beat that moves up. */
+    /**
+     * Removes the Note or Rest under the cursor; the cursor stays on the beat that moves up.
+     * In a Chord only the Note on the cursor's string goes, unless the cursor's string has none.
+     */
     fun delete(): EditSession {
-        if (elementAtCursor == null) return this
+        val element = elementAtCursor ?: return this
+        if (element is Chord && element.noteOn(cursor.string) != null) {
+            return apply(DeleteNote(track, cursor.measure, cursor.beat, cursor.string))
+        }
         return apply(DeleteElement(track, cursor.measure, cursor.beat)).let { it.moveTo(it.cursor) }
     }
 
@@ -213,7 +247,7 @@ class EditSession private constructor(
     fun moveToStringBelow(): EditSession =
         moveTo(cursor.copy(string = (cursor.string + 1).coerceAtMost(song.tracks[track].instrument.stringCount)))
 
-    /** The Note or Rest under the cursor, or null on the free beat after the last one. */
+    /** The Note, Chord or Rest under the cursor, or null on the free beat after the last one. */
     val elementAtCursor: VoiceElement?
         get() = elementsOf(cursor.measure).getOrNull(cursor.beat)
 
