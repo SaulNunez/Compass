@@ -30,4 +30,6 @@ data class PracticeSettings(
     val click: Boolean = false,
     /** Whether one Measure of clicks plays before Playback starts. */
     val countIn: Boolean = false,
+    /** The index of the Track being read: the one the views show. */
+    val readTrack: Int = 0,
 )

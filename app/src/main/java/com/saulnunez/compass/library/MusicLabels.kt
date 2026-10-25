@@ -3,8 +3,11 @@ package com.saulnunez.compass.library
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.res.stringResource
 import com.saulnunez.compass.R
 import com.saulnunez.compass.domain.KeySignature
+import com.saulnunez.compass.domain.Pitch
+import com.saulnunez.compass.domain.Sound
 import com.saulnunez.compass.domain.SupportedInstrument
 import com.saulnunez.compass.domain.TuningPreset
 
@@ -40,4 +43,24 @@ fun TuningPreset.label(): Int = when (this) {
 fun keySignatureLabel(key: KeySignature): String {
     val names = stringArrayResource(if (key.isMinor) R.array.minor_keys else R.array.major_keys)
     return names[key.fifths + 7]
+}
+
+@StringRes
+fun Sound.label(): Int = when (this) {
+    Sound.CLEAN_ELECTRIC_GUITAR -> R.string.sound_clean_electric_guitar
+    Sound.OVERDRIVEN_GUITAR -> R.string.sound_overdriven_guitar
+    Sound.DISTORTED_ELECTRIC_GUITAR -> R.string.sound_distorted_electric_guitar
+    Sound.STEEL_ACOUSTIC_GUITAR -> R.string.sound_steel_acoustic_guitar
+    Sound.NYLON_ACOUSTIC_GUITAR -> R.string.sound_nylon_acoustic_guitar
+    Sound.FINGERED_BASS -> R.string.sound_fingered_bass
+    Sound.PICKED_BASS -> R.string.sound_picked_bass
+    Sound.SLAP_BASS -> R.string.sound_slap_bass
+    Sound.FRETLESS_BASS -> R.string.sound_fretless_bass
+}
+
+/** A pitch's note name and octave, e.g. E2 for the low string of a standard-tuned guitar. */
+@Composable
+fun pitchLabel(pitch: Pitch): String {
+    val names = stringArrayResource(R.array.pitch_classes)
+    return stringResource(R.string.pitch_name, names[pitch.midi % 12], pitch.midi / 12 - 1)
 }

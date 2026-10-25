@@ -37,12 +37,12 @@ class NotationPlayer internal constructor(private val playsOnTap: Boolean) {
         if (api?.play() == true) onStarted()
     }
 
-    /** Starts Playback at the Edit mode [cursor] in the first Track; Stop goes back there. */
-    fun playFrom(cursor: Cursor) {
+    /** Starts Playback at the Edit mode [cursor] in the Track at index [track]; Stop goes back there. */
+    fun playFrom(cursor: Cursor, track: Int) {
         val api = api ?: return
         val score = api.score ?: return
         val tickCache = api.tickCache ?: return
-        startTick = tickCache.startTickOf(score, cursor)
+        startTick = tickCache.startTickOf(score, track, cursor)
         api.tickPosition = startTick
         if (!isPlaying) play()
     }

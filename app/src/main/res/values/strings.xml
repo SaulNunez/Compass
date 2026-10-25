@@ -189,6 +189,51 @@
     <string name="measure_settings_title">Measure %1$d</string>
     <string name="measure_settings_hint">Changes apply to every Track, from this Measure until the next change.</string>
     <string name="apply">Apply</string>
+
+    <!-- Tracks -->
+    <!-- Practice mode: picks the Track the views show. -->
+    <string name="field_read_track">Track being read</string>
+    <!-- Edit mode: picks the Track the cursor writes into. -->
+    <string name="field_edited_track">Track</string>
+    <string name="add_track">Add Track</string>
+    <string name="track_settings">Track settings</string>
+    <string name="new_track_title">New Track</string>
+    <string name="field_track_name">Name</string>
+    <string name="field_sound">Sound</string>
+    <!-- A Tuning set string by string rather than a ready-made one. -->
+    <string name="tuning_custom">Custom</string>
+    <!-- %1$d is the string number, counted from the highest string. -->
+    <string name="tuning_string">String %1$d</string>
+    <!-- %1$d is the string number. -->
+    <string name="tuning_string_lower">Tune string %1$d a semitone lower</string>
+    <string name="tuning_string_higher">Tune string %1$d a semitone higher</string>
+    <string name="tuning_keeps_frets">Frets stay as written; the Notes sound in the new Tuning.</string>
+    <string name="remove_track">Remove Track</string>
+    <!-- A pitch: %1$s is the note name, %2$d its octave, e.g. E2. -->
+    <string name="pitch_name">%1$s%2$d</string>
+    <string-array name="pitch_classes">
+        <item>C</item>
+        <item>C♯</item>
+        <item>D</item>
+        <item>E♭</item>
+        <item>E</item>
+        <item>F</item>
+        <item>F♯</item>
+        <item>G</item>
+        <item>A♭</item>
+        <item>A</item>
+        <item>B♭</item>
+        <item>B</item>
+    </string-array>
+    <string name="sound_clean_electric_guitar">Clean electric guitar</string>
+    <string name="sound_overdriven_guitar">Overdriven guitar</string>
+    <string name="sound_distorted_electric_guitar">Distorted electric guitar</string>
+    <string name="sound_steel_acoustic_guitar">Steel-string acoustic guitar</string>
+    <string name="sound_nylon_acoustic_guitar">Nylon-string acoustic guitar</string>
+    <string name="sound_fingered_bass">Fingered bass</string>
+    <string name="sound_picked_bass">Picked bass</string>
+    <string name="sound_slap_bass">Slap bass</string>
+    <string name="sound_fretless_bass">Fretless bass</string>
     <string name="new_section">New Section</string>
     <string name="edit_section">Edit Section</string>
     <string name="copy_section">Copy Section</string>

@@ -163,6 +163,45 @@
     <string name="measure_settings_title">Compás %1$d</string>
     <string name="measure_settings_hint">Los cambios se aplican a todas las pistas, desde este compás hasta el siguiente cambio.</string>
     <string name="apply">Aplicar</string>
+
+    <!-- Pistas -->
+    <string name="field_read_track">Pista que se lee</string>
+    <string name="field_edited_track">Pista</string>
+    <string name="add_track">Añadir pista</string>
+    <string name="track_settings">Ajustes de la pista</string>
+    <string name="new_track_title">Nueva pista</string>
+    <string name="field_track_name">Nombre</string>
+    <string name="field_sound">Sonido</string>
+    <string name="tuning_custom">Personalizada</string>
+    <string name="tuning_string">Cuerda %1$d</string>
+    <string name="tuning_string_lower">Bajar la cuerda %1$d un semitono</string>
+    <string name="tuning_string_higher">Subir la cuerda %1$d un semitono</string>
+    <string name="tuning_keeps_frets">Los trastes se mantienen; las notas suenan en la nueva afinación.</string>
+    <string name="remove_track">Eliminar pista</string>
+    <string name="pitch_name">%1$s%2$d</string>
+    <string-array name="pitch_classes">
+        <item>Do</item>
+        <item>Do♯</item>
+        <item>Re</item>
+        <item>Mi♭</item>
+        <item>Mi</item>
+        <item>Fa</item>
+        <item>Fa♯</item>
+        <item>Sol</item>
+        <item>La♭</item>
+        <item>La</item>
+        <item>Si♭</item>
+        <item>Si</item>
+    </string-array>
+    <string name="sound_clean_electric_guitar">Guitarra eléctrica limpia</string>
+    <string name="sound_overdriven_guitar">Guitarra con overdrive</string>
+    <string name="sound_distorted_electric_guitar">Guitarra eléctrica distorsionada</string>
+    <string name="sound_steel_acoustic_guitar">Guitarra acústica de cuerdas de acero</string>
+    <string name="sound_nylon_acoustic_guitar">Guitarra acústica de cuerdas de nailon</string>
+    <string name="sound_fingered_bass">Bajo con dedos</string>
+    <string name="sound_picked_bass">Bajo con púa</string>
+    <string name="sound_slap_bass">Bajo slap</string>
+    <string name="sound_fretless_bass">Bajo sin trastes</string>
     <string name="new_section">Nueva sección</string>
     <string name="edit_section">Editar sección</string>
     <string name="copy_section">Copiar sección</string>
