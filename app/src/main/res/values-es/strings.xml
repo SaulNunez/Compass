@@ -89,9 +89,9 @@
     <string name="restore_not_a_backup">Ese archivo no es una copia de seguridad de Compass o está dañado.</string>
     <string name="restore_failed">No se pudo leer la copia de seguridad.</string>
 
-    <string name="song_share">Compartir</string>
-    <string name="song_share_chooser">Enviar «%1$s»</string>
-    <string name="song_share_failed">No se pudo preparar el archivo de la canción.</string>
+    <string name="send_song_file">Enviar archivo de canción</string>
+    <string name="send_song_file_chooser">Enviar «%1$s»</string>
+    <string name="send_song_file_failed">No se pudo preparar el archivo de la canción.</string>
     <string name="song_file_untitled">Canción</string>
     <string name="song_file_import">Importar</string>
     <string name="song_file_imported">«%1$s» se añadió a tu biblioteca.</string>

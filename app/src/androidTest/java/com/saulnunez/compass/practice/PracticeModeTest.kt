@@ -30,7 +30,7 @@ class PracticeModeTest {
     @Test
     fun practiceModeOffersOnlyLeavingSharingPlaybackAndSwitchingToEditMode() {
         compose.setContent {
-            PracticeScreen(demoSong, PracticeSettings(), onSettingsChange = {}, onBack = {}, onEdit = {}, onShare = {})
+            PracticeScreen(demoSong, PracticeSettings(), onSettingsChange = {}, onBack = {}, onEdit = {}, onSendSongFile = {})
         }
 
         // Back to the Library, sharing a Song file, the explicit switch to Edit mode, the choice of
@@ -39,7 +39,7 @@ class PracticeModeTest {
         // Duration choice, undo or delete.
         compose.onAllNodes(hasClickAction()).assertCountEquals(3 + ShownViews.entries.size + 3)
         compose.onNodeWithText(string(R.string.back_to_library)).assertExists()
-        compose.onNodeWithText(string(R.string.song_share)).assertExists()
+        compose.onNodeWithText(string(R.string.send_song_file)).assertExists()
         compose.onNodeWithText(string(R.string.enter_edit_mode)).assertExists()
         compose.onAllNodesWithText(string(R.string.undo)).assertCountEquals(0)
         compose.onAllNodesWithText(string(R.string.rest)).assertCountEquals(0)
@@ -52,7 +52,7 @@ class PracticeModeTest {
             if (editing) {
                 Text("editing")
             } else {
-                PracticeScreen(demoSong, PracticeSettings(), onSettingsChange = {}, onBack = {}, onEdit = { editing = true }, onShare = {})
+                PracticeScreen(demoSong, PracticeSettings(), onSettingsChange = {}, onBack = {}, onEdit = { editing = true }, onSendSongFile = {})
             }
         }
 

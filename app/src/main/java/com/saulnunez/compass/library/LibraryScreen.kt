@@ -62,7 +62,7 @@ fun LibraryScreen(
     onBackUp: () -> Unit,
     onRestore: () -> Unit,
     onImportSong: () -> Unit,
-    onShareSong: (SongId) -> Unit,
+    onSendSongFile: (SongId) -> Unit,
     onDeleteSong: (SongId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -129,7 +129,7 @@ fun LibraryScreen(
                             SongRow(
                                 entry,
                                 onOpen = { onOpenSong(entry.id) },
-                                onShare = { onShareSong(entry.id) },
+                                onSendSongFile = { onSendSongFile(entry.id) },
                                 onDelete = { pendingDelete = entry.id.value },
                             )
                             HorizontalDivider()
@@ -184,13 +184,13 @@ private fun BackupMenu(onBackUp: () -> Unit, onRestore: () -> Unit) {
 }
 
 @Composable
-private fun SongRow(entry: LibraryEntry, onOpen: () -> Unit, onShare: () -> Unit, onDelete: () -> Unit) {
+private fun SongRow(entry: LibraryEntry, onOpen: () -> Unit, onSendSongFile: () -> Unit, onDelete: () -> Unit) {
     ListItem(
         headlineContent = { Text(entry.title) },
         supportingContent = entry.artist.takeIf { it.isNotBlank() }?.let { artist -> { Text(artist) } },
         trailingContent = {
             Row {
-                TextButton(onClick = onShare) { Text(stringResource(R.string.song_share)) }
+                TextButton(onClick = onSendSongFile) { Text(stringResource(R.string.send_song_file)) }
                 TextButton(onClick = onDelete) { Text(stringResource(R.string.delete)) }
             }
         },
@@ -224,7 +224,7 @@ private fun LibraryScreenPreview() {
             onBackUp = {},
             onRestore = {},
             onImportSong = {},
-            onShareSong = {},
+            onSendSongFile = {},
             onDeleteSong = {},
         )
     }

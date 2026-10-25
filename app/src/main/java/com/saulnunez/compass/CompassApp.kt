@@ -28,7 +28,7 @@ import com.saulnunez.compass.library.LibraryScreen
 import com.saulnunez.compass.library.NewSongScreen
 import com.saulnunez.compass.practice.PracticeScreen
 import com.saulnunez.compass.songfile.SONG_FILE_OPEN_MIME_TYPES
-import com.saulnunez.compass.songfile.shareSongFile
+import com.saulnunez.compass.songfile.sendSongFile
 import com.saulnunez.compass.storage.AddResult
 import com.saulnunez.compass.storage.NotABackupException
 import com.saulnunez.compass.storage.NotASongFileException
@@ -129,11 +129,11 @@ fun CompassApp() {
             )
         }
     }
-    val shareSong: (SongId) -> Unit = { id ->
+    val sendSong: (SongId) -> Unit = { id ->
         scope.launch {
             // Waits for any edit still being saved, so the Song file has the Song as it is now.
-            val shared = storeLock.withLock { shareSongFile(context, store, id) }
-            if (!shared) showMessage(resources.getString(R.string.song_share_failed))
+            val sent = storeLock.withLock { sendSongFile(context, store, id) }
+            if (!sent) showMessage(resources.getString(R.string.send_song_file_failed))
         }
     }
 
@@ -149,7 +149,7 @@ fun CompassApp() {
                 onBackUp = { backUp.launch(resources.getString(R.string.backup_file_name, LocalDate.now().toString())) },
                 onRestore = { restore.launch(BACKUP_OPEN_MIME_TYPES) },
                 onImportSong = { importSongFile.launch(SONG_FILE_OPEN_MIME_TYPES) },
-                onShareSong = shareSong,
+                onSendSongFile = sendSong,
                 onDeleteSong = { id ->
                     scope.launch {
                         storeLock.withLock { withContext(Dispatchers.IO) { store.delete(id) } }
@@ -200,7 +200,7 @@ fun CompassApp() {
                     },
                     onBack = goToLibrary,
                     onEdit = { route = id.toEditRoute() },
-                    onShare = { shareSong(id) },
+                    onSendSongFile = { sendSong(id) },
                 )
             }
         }
