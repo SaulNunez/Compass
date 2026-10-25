@@ -21,8 +21,8 @@ data class WriteElement(val track: Int, val measure: Int, val beat: Int, val ele
 
 /**
  * Writes [note] on its string at [beat]. A Note already on that string is replaced; Notes on
- * other strings stay, so the beat becomes a Chord and [note] takes their Duration. A Rest is
- * replaced; [beat] one past the last element appends [note].
+ * other strings stay, so the beat becomes a Chord and [note] takes their Duration and their slap
+ * or pop. A Rest is replaced; [beat] one past the last element appends [note].
  */
 data class WriteNote(val track: Int, val measure: Int, val beat: Int, val note: Note) : Edit {
     override fun applyTo(song: Song): Song = song.editMeasure(track, measure) { elements ->
@@ -30,7 +30,8 @@ data class WriteNote(val track: Int, val measure: Int, val beat: Int, val note: 
         val existing = elements.getOrNull(beat) ?: return@editMeasure elements + note
         val others = existing.notes.filter { it.string != note.string }
         val duration = if (others.isEmpty()) note.duration else existing.duration
-        elements.toMutableList().apply { set(beat, elementOf(others + note.copy(duration = duration), duration)) }
+        val joining = note.copy(duration = duration).let { if (others.isEmpty()) it else it.withPerChordTechniques(others.first().perChordTechniques) }
+        elements.toMutableList().apply { set(beat, elementOf(others + joining, duration)) }
     }
 }
 
@@ -64,7 +65,8 @@ data class SetTie(val track: Int, val measure: Int, val beat: Int, val string: I
 
 /**
  * Adds [technique] to the Note on [string] at [beat], taking off any Technique it cannot be
- * played with; or takes it off when [isAdded] is false.
+ * played with; or takes it off when [isAdded] is false. A Technique played by the whole Chord
+ * (slap, pop) goes on or comes off every Note of the Chord at [beat].
  */
 data class SetTechnique(
     val track: Int,
@@ -82,7 +84,7 @@ data class SetTechnique(
             require(elements[beat].noteOn(string) != null) { "No Note on string $string at beat ${beat + 1}" }
             elements.toMutableList().apply {
                 set(beat, get(beat).mapNotes { note ->
-                    if (note.string != string) return@mapNotes note
+                    if (note.string != string && !technique.isPerChord) return@mapNotes note
                     val kept = note.techniques.filterNot { it == technique || technique.excludes(it) }.toSet()
                     note.copy(techniques = if (isAdded) kept + technique else kept)
                 })

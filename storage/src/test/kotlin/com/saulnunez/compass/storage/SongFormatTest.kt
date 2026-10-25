@@ -252,6 +252,50 @@ class SongFormatTest {
     }
 
     @Test
+    fun `a Chord saved with slap or pop on only some Notes opens with it on every Note, as it was shown and played`() {
+        val document = """
+            {
+              "formatVersion": 5,
+              "id": "slap",
+              "title": "Slap",
+              "artist": "",
+              "measures": [{ "beats": 4, "beatUnit": 4, "keyFifths": 0, "keyIsMinor": false, "tempo": 100 }],
+              "tracks": [
+                {
+                  "name": "Bass",
+                  "instrument": "bass",
+                  "openStrings": [43, 38, 33, 28],
+                  "sound": "slap-bass",
+                  "measures": [[{
+                    "type": "chord",
+                    "duration": { "value": "quarter", "dotted": false, "triplet": false },
+                    "notes": [
+                      { "string": 3, "fret": 2, "tied": false, "techniques": ["vibrato"] },
+                      { "string": 4, "fret": 0, "tied": false, "techniques": ["pop"] }
+                    ]
+                  }]]
+                }
+              ],
+              "sections": []
+            }
+        """.trimIndent()
+
+        val song = SongFormat.decode(document)
+
+        assertEquals(
+            listOf(
+                Chord(
+                    listOf(
+                        Note(3, 2, Duration.QUARTER, techniques = setOf(Technique.VIBRATO, Technique.POP)),
+                        Note(4, 0, Duration.QUARTER, techniques = setOf(Technique.POP)),
+                    ),
+                ),
+            ),
+            song.tracks[0].voice.measures.single(),
+        )
+    }
+
+    @Test
     fun `a document with an unsafe SongId is refused`() {
         val unsafe = SongFormat.encode(song).replace("\"id\":\"s\"", "\"id\":\"../escape\"")
 

@@ -59,6 +59,13 @@ data class Note(
     }
 }
 
+/** The Techniques of this Note played by its whole Chord (see [Technique.isPerChord]). */
+val Note.perChordTechniques: Set<Technique> get() = techniques.filter { it.isPerChord }.toSet()
+
+/** This Note with [perChord] as its Techniques played by the whole Chord, in place of its own. */
+fun Note.withPerChordTechniques(perChord: Set<Technique>): Note =
+    copy(techniques = techniques.filterNot { it.isPerChord }.toSet() + perChord)
+
 /** Several Notes that start together on different strings and last the same Duration, listed from string 1 down. */
 data class Chord(val notes: List<Note>) : VoiceElement {
     init {
@@ -67,6 +74,9 @@ data class Chord(val notes: List<Note>) : VoiceElement {
             "A Chord's Notes are on different strings, listed from string 1 down"
         }
         require(notes.all { it.duration == notes.first().duration }) { "A Chord's Notes all last the same Duration" }
+        require(notes.map { it.perChordTechniques }.distinct().size == 1) {
+            "Every Note of a Chord has the same slap or pop: $notes"
+        }
     }
 
     override val duration: Duration get() = notes.first().duration
