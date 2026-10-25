@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Compass</string>
+    <!-- Subtitle under a Song's title in Practice mode; %1$s is the artist. -->
+    <string name="practice_mode_subtitle">%1$s · Practice mode</string>
 </resources>

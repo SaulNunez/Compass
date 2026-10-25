@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Compass</string>
+    <string name="practice_mode_subtitle">%1$s · Modo práctica</string>
+</resources>
