@@ -48,6 +48,7 @@ import com.saulnunez.compass.domain.PracticeSettings
 import com.saulnunez.compass.domain.ShownViews
 import com.saulnunez.compass.domain.Song
 import com.saulnunez.compass.domain.TempoPercentage
+import com.saulnunez.compass.domain.measuresIn
 import com.saulnunez.compass.notation.NotationPlayer
 import com.saulnunez.compass.notation.NotationView
 import com.saulnunez.compass.notation.playerControls
@@ -85,6 +86,9 @@ fun PracticeScreen(
     val player = rememberNotationPlayer()
     val currentOnPlaybackStarted by rememberUpdatedState(onPlaybackStarted)
     SideEffect { player.onStarted = { currentOnPlaybackStarted() } }
+    // A Loop the Song no longer has Measures for plays nothing different.
+    val loopMeasures = settings.loop?.measuresIn(song)
+    SideEffect { player.loop = loopMeasures }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -142,6 +146,7 @@ fun PracticeScreen(
                         )
                     }
                     PlaybackControls(
+                        song = song,
                         player = player,
                         settings = settings,
                         onSettingsChange = onSettingsChange,
@@ -162,10 +167,11 @@ fun PracticeScreen(
     }
 }
 
-/** Play/stop, the tempo percentage, the click and the count-in. */
+/** Play/stop, the tempo percentage, the click, the count-in and the Loop. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PlaybackControls(
+    song: Song,
     player: NotationPlayer,
     settings: PracticeSettings,
     onSettingsChange: (PracticeSettings) -> Unit,
@@ -202,6 +208,7 @@ private fun PlaybackControls(
                 onClick = { onSettingsChange(settings.copy(countIn = !settings.countIn)) },
                 label = { Text(stringResource(R.string.playback_count_in)) },
             )
+            LoopChoice(song, settings.loop, onLoopChange = { onSettingsChange(settings.copy(loop = it)) })
         }
     }
 }

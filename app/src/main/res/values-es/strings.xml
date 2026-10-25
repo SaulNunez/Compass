@@ -17,6 +17,13 @@
     <string name="playback_click">Metrónomo</string>
     <string name="playback_count_in">Cuenta previa</string>
     <string name="tempo_percentage">Tempo %1$d%%</string>
+    <string name="playback_loop">Bucle</string>
+    <string name="loop_of_section">Bucle: %1$s</string>
+    <string name="loop_of_measures">Bucle: compases %1$d–%2$d</string>
+    <string name="loop_title">Bucle</string>
+    <string name="loop_none">Sin bucle</string>
+    <string name="loop_section_option">%1$s (compases %2$d–%3$d)</string>
+    <string name="loop_measures_option">Compases</string>
     <string name="song_cannot_open">No se puede abrir esta canción. Puede estar dañada o haberse creado con una versión más reciente de Compass.</string>
     <string name="song_cannot_save">No se pudo guardar este cambio.</string>
 

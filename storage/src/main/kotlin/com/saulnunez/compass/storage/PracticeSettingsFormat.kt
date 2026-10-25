@@ -1,5 +1,6 @@
 package com.saulnunez.compass.storage
 
+import com.saulnunez.compass.domain.Loop
 import com.saulnunez.compass.domain.PracticeSettings
 import com.saulnunez.compass.domain.ShownViews
 import com.saulnunez.compass.domain.TempoPercentage
@@ -19,9 +20,15 @@ private data class PracticeSettingsDocument(
     val shownViews: ShownViewsDocument,
     val click: Boolean,
     val countIn: Boolean,
+    /** Added in version 2; version 1 has no Loop. */
+    val loop: LoopDocument? = null,
     /** Added without a new format version: settings saved before it read the first Track. */
     val readTrack: Int = 0,
 )
+
+/** A Section Loop has [section]; a Measure-range Loop has [first] and [last] (all 0-based). */
+@Serializable
+private data class LoopDocument(val section: Int? = null, val first: Int? = null, val last: Int? = null)
 
 @Serializable
 private enum class ShownViewsDocument {
@@ -43,6 +50,11 @@ internal object PracticeSettingsFormat {
             },
             click = settings.click,
             countIn = settings.countIn,
+            loop = when (val loop = settings.loop) {
+                null -> null
+                is Loop.OfSection -> LoopDocument(section = loop.section)
+                is Loop.OfMeasures -> LoopDocument(first = loop.first, last = loop.last)
+            },
             readTrack = settings.readTrack,
         ),
     )
@@ -53,7 +65,7 @@ internal object PracticeSettingsFormat {
      */
     fun decodeOrDefault(text: String): PracticeSettings = runCatching {
         val document = json.decodeFromString(PracticeSettingsDocument.serializer(), text)
-        check(document.formatVersion == PRACTICE_SETTINGS_FORMAT_VERSION)
+        check(document.formatVersion in 1..PRACTICE_SETTINGS_FORMAT_VERSION)
         PracticeSettings(
             tempoPercentage = TempoPercentage(document.tempoPercentage.coerceIn(TempoPercentage.RANGE)),
             shownViews = when (document.shownViews) {
@@ -63,11 +75,22 @@ internal object PracticeSettingsFormat {
             },
             click = document.click,
             countIn = document.countIn,
+            loop = document.loop?.toLoop(),
             readTrack = document.readTrack.coerceAtLeast(0),
         )
     }.getOrDefault(PracticeSettings())
 }
 
-private const val PRACTICE_SETTINGS_FORMAT_VERSION = 1
+/** A Loop that can't be read is dropped, keeping the rest of the Practice settings. */
+private fun LoopDocument.toLoop(): Loop? = runCatching {
+    when {
+        section != null -> Loop.OfSection(section)
+        first != null && last != null -> Loop.OfMeasures(first, last)
+        else -> null
+    }
+}.getOrNull()
+
+/** Version 2 adds the Loop. */
+private const val PRACTICE_SETTINGS_FORMAT_VERSION = 2
 
 private val json = Json { encodeDefaults = true }

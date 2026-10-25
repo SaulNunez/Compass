@@ -23,6 +23,19 @@
     <string name="playback_count_in">Count-in</string>
     <!-- The practice tempo as a percentage of the Song's written Tempos; %1$d is the percentage. -->
     <string name="tempo_percentage">Tempo %1$d%%</string>
+    <!-- Opens the choice of a Loop (the Measures Playback repeats) when there is none. -->
+    <string name="playback_loop">Loop</string>
+    <!-- The Loop in use when it is a Section; %1$s is the Section's name. -->
+    <string name="loop_of_section">Loop: %1$s</string>
+    <!-- The Loop in use when it is a range of Measures; %1$d and %2$d are its first and last Measure. -->
+    <string name="loop_of_measures">Loop: Measures %1$d–%2$d</string>
+    <string name="loop_title">Loop</string>
+    <!-- Choice in the Loop dialog: play to the end of the Song instead. -->
+    <string name="loop_none">No Loop</string>
+    <!-- Choice in the Loop dialog: a Section; %1$s is its name, %2$d and %3$d its first and last Measure. -->
+    <string name="loop_section_option">%1$s (Measures %2$d–%3$d)</string>
+    <!-- Choice in the Loop dialog: any range of Measures, given below it. -->
+    <string name="loop_measures_option">Measures</string>
     <string name="song_cannot_open">This Song can’t be opened. It may be damaged or made with a newer version of Compass.</string>
     <string name="song_cannot_save">This change couldn’t be saved.</string>
 

@@ -26,9 +26,22 @@ data class Click(val startMillis: Double, val isCountIn: Boolean)
  * Turns this Song and its [settings] into the [PlaybackTimeline] Playback follows when it starts at
  * Measure [fromMeasure] (0-based): every Tempo scaled by the tempo percentage, all Tracks together,
  * the click on every beat when it is on, and a single count-in before the first Measure.
+ *
+ * With a Loop, Playback stays within the Loop's Measures (starting at its first Measure when
+ * [fromMeasure] is outside it), plays to its last Measure and goes straight back to its first,
+ * with no gap and no further count-in. Playback repeats a Loop until stopped, so the timeline
+ * lays out [passes] times through it (the first starting at [fromMeasure]).
  */
-fun Song.playbackTimeline(settings: PracticeSettings, fromMeasure: Int = 0): PlaybackTimeline {
+fun Song.playbackTimeline(settings: PracticeSettings, fromMeasure: Int = 0, passes: Int = 1): PlaybackTimeline {
     require(fromMeasure in measures.indices) { "No Measure ${fromMeasure + 1} in a Song of ${measures.size}" }
+    require(passes >= 1) { "Playback goes through a Loop at least once" }
+    val loop = settings.loop?.measuresIn(this)
+    val start = if (loop == null || fromMeasure in loop) fromMeasure else loop.first
+    val played = if (loop == null) {
+        (start until measures.size).toList()
+    } else {
+        (start..loop.last) + List(passes - 1) { loop }.flatten()
+    }
     val timedMeasures = mutableListOf<TimedMeasure>()
     val notes = mutableListOf<TimedNote>()
     val clicks = mutableListOf<Click>()
@@ -36,12 +49,12 @@ fun Song.playbackTimeline(settings: PracticeSettings, fromMeasure: Int = 0): Pla
     var measureStart = 0.0
     if (settings.countIn) {
         // One Measure of clicks in the time signature and Tempo Playback starts in.
-        val first = timing(measures[fromMeasure], settings)
+        val first = timing(measures[start], settings)
         clicks += first.beatStarts(0.0).map { Click(it, isCountIn = true) }
         measureStart = first.lengthMillis
     }
 
-    for (index in fromMeasure until measures.size) {
+    for (index in played) {
         val timing = timing(measures[index], settings)
         timedMeasures += TimedMeasure(index, measureStart, timing.lengthMillis, timing.beatsPerMinute)
         if (settings.click) clicks += timing.beatStarts(measureStart).map { Click(it, isCountIn = false) }
