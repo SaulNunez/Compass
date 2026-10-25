@@ -9,6 +9,13 @@
     <string name="view_standard_notation">Notación estándar</string>
     <!-- Tablatura y notación estándar, una sobre otra. -->
     <string name="view_both">Ambas</string>
+
+    <!-- Modo práctica: reproducción -->
+    <string name="playback_play">Reproducir</string>
+    <string name="playback_stop">Detener</string>
+    <string name="playback_click">Metrónomo</string>
+    <string name="playback_count_in">Cuenta previa</string>
+    <string name="tempo_percentage">Tempo %1$d%%</string>
     <string name="song_cannot_open">No se puede abrir esta canción. Puede estar dañada o haberse creado con una versión más reciente de Compass.</string>
     <string name="song_cannot_save">No se pudo guardar este cambio.</string>
 
