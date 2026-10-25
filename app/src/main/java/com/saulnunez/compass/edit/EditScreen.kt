@@ -61,13 +61,15 @@ import com.saulnunez.compass.domain.MeasureFill
 import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Rest
+import com.saulnunez.compass.domain.Technique
+import com.saulnunez.compass.domain.noteOn
 import com.saulnunez.compass.domain.measureFill
 import com.saulnunez.compass.notation.TablatureView
 import com.saulnunez.compass.practice.demoSong
 import com.saulnunez.compass.ui.theme.CompassTheme
 
 /**
- * Edit mode: writes Notes and Rests into the Tablature of a Song's first Track through
+ * Edit mode: writes Notes, Chords and Rests, ties and Techniques into the Tablature of a Song's first Track through
  * [session]. Every action hands the next session to [onSessionChange]; [onDone] switches back
  * to Practice mode.
  */
@@ -109,6 +111,7 @@ fun EditScreen(
             MeasureTools(session, onSessionChange)
             MeasureEditor(session)
             DurationBar(session, onSessionChange)
+            TechniqueBar(session, onSessionChange)
             CursorPad(session, onSessionChange)
             NumberPad(onDigit = { onSessionChange(session.typeDigit(it)) })
         }
@@ -270,8 +273,9 @@ private fun MeasureEditor(session: EditSession) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     for (string in 1..track.instrument.stringCount) {
                         val isCursor = session.cursor.beat == beat && session.cursor.string == string
+                        val note = element?.noteOn(string)
                         val text = when {
-                            element is Note && element.string == string -> element.fret.toString()
+                            note != null -> noteSymbol(note)
                             element is Rest && string == (track.instrument.stringCount + 1) / 2 -> stringResource(R.string.rest_short)
                             else -> ""
                         }
@@ -332,6 +336,35 @@ private fun DurationBar(session: EditSession, onSessionChange: (EditSession) -> 
             OutlinedButton(onClick = { onSessionChange(session.delete()) }, enabled = session.elementAtCursor != null) {
                 Text(stringResource(R.string.delete))
             }
+        }
+    }
+}
+
+/** Ties the Note at the cursor and adds or removes its Techniques; disabled where there is no Note. */
+@Composable
+private fun TechniqueBar(session: EditSession, onSessionChange: (EditSession) -> Unit) {
+    val note = session.noteAtCursor
+    val description = stringResource(R.string.techniques)
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 8.dp)
+            .semantics { contentDescription = description },
+    ) {
+        FilterChip(
+            selected = note?.isTied == true,
+            onClick = { onSessionChange(session.toggleTie()) },
+            label = { Text(stringResource(R.string.tie)) },
+            enabled = session.canTie,
+        )
+        session.availableTechniques.forEach { technique ->
+            FilterChip(
+                selected = note != null && technique in note.techniques,
+                onClick = { onSessionChange(session.toggleTechnique(technique)) },
+                label = { Text(stringResource(technique.label())) },
+                enabled = note != null,
+            )
         }
     }
 }
@@ -397,6 +430,25 @@ private fun NoteValue.symbol(): String = when (this) {
 /** A short written form of a Duration, e.g. "1/4." for a dotted quarter or "1/8³" for a triplet eighth. */
 private fun durationSymbol(duration: Duration): String =
     duration.value.symbol() + (if (duration.isDotted) "." else "") + (if (duration.isTriplet) "³" else "")
+
+/** A Note's cell in the grid: its fret, in brackets when tied, or an x for a dead note. */
+private fun noteSymbol(note: Note): String = when {
+    Technique.DEAD_NOTE in note.techniques -> "x"
+    note.isTied -> "(${note.fret})"
+    else -> note.fret.toString()
+}
+
+private fun Technique.label(): Int = when (this) {
+    Technique.HAMMER_ON_PULL_OFF -> R.string.technique_hammer_on_pull_off
+    Technique.SLIDE -> R.string.technique_slide
+    Technique.BEND -> R.string.technique_bend
+    Technique.BEND_AND_RELEASE -> R.string.technique_bend_and_release
+    Technique.VIBRATO -> R.string.technique_vibrato
+    Technique.PALM_MUTE -> R.string.technique_palm_mute
+    Technique.DEAD_NOTE -> R.string.technique_dead_note
+    Technique.SLAP -> R.string.technique_slap
+    Technique.POP -> R.string.technique_pop
+}
 
 private fun NoteValue.label(): Int = when (this) {
     NoteValue.WHOLE -> R.string.note_value_whole

@@ -115,7 +115,7 @@ class EditSessionTest {
     fun `moving the cursor between digits ends a two-digit fret`() {
         val session = EditSession.start(song).type(1).moveToStringBelow().type(2)
 
-        assertEquals(listOf(Note(2, 2, Duration.QUARTER)), session.measure(0))
+        assertEquals(listOf(Chord(listOf(Note(1, 1, Duration.QUARTER), Note(2, 2, Duration.QUARTER)))), session.measure(0))
     }
 
     @Test

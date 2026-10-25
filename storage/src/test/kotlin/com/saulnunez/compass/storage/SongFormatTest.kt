@@ -1,5 +1,6 @@
 package com.saulnunez.compass.storage
 
+import com.saulnunez.compass.domain.Chord
 import com.saulnunez.compass.domain.Duration
 import com.saulnunez.compass.domain.InstrumentKind
 import com.saulnunez.compass.domain.KeySignature
@@ -9,6 +10,7 @@ import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Rest
 import com.saulnunez.compass.domain.SongId
 import com.saulnunez.compass.domain.Tempo
+import com.saulnunez.compass.domain.Technique
 import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.domain.TuningPreset
 import com.saulnunez.compass.domain.Voice
@@ -83,6 +85,61 @@ class SongFormatTest {
             track.voice.measures.single(),
         )
         assertEquals(Measure(TimeSignature(4, 4), KeySignature(1, isMinor = true), Tempo(120)), song.measures.single())
+    }
+
+    @Test
+    fun `Chords, ties and every Technique survive a save and load`() {
+        val quarter = Duration.QUARTER
+        val written = song.copy(
+            tracks = song.tracks.map { track ->
+                track.copy(
+                    voice = Voice(
+                        track.voice.measures.mapIndexed { index, elements ->
+                            when (index) {
+                                0 -> listOf(
+                                    Chord(listOf(Note(1, 0, quarter), Note(2, 1, quarter, techniques = setOf(Technique.VIBRATO)))),
+                                    Chord(listOf(Note(1, 0, quarter, isTied = true), Note(3, 2, quarter))),
+                                    Note(3, 2, Duration.HALF, isTied = true, techniques = setOf(Technique.HAMMER_ON_PULL_OFF, Technique.PALM_MUTE)),
+                                )
+                                1 -> Technique.entries.map { Note(4, 5, Duration.SIXTEENTH, techniques = setOf(it)) }
+                                else -> elements
+                            }
+                        },
+                    ),
+                )
+            },
+        )
+
+        assertEquals(written, SongFormat.decode(SongFormat.encode(written)))
+    }
+
+    @Test
+    fun `a version 2 document is upgraded on load`() {
+        val versionTwo = """
+            {
+              "formatVersion": 2,
+              "id": "riff",
+              "title": "Riff",
+              "artist": "Band",
+              "measures": [{ "beats": 4, "beatUnit": 4, "keyFifths": 0, "keyIsMinor": false, "tempo": 100 }],
+              "tracks": [{
+                "name": "Guitar",
+                "instrument": "guitar",
+                "openStrings": [64, 59, 55, 50, 45, 40],
+                "measures": [[
+                  { "type": "note", "string": 6, "fret": 3, "duration": { "value": "quarter", "dotted": true, "triplet": false } },
+                  { "type": "rest", "duration": { "value": "eighth", "dotted": false, "triplet": false } }
+                ]]
+              }]
+            }
+        """.trimIndent()
+
+        val song = SongFormat.decode(versionTwo)
+
+        assertEquals(
+            listOf(Note(6, 3, Duration(NoteValue.QUARTER, isDotted = true)), Rest(Duration.EIGHTH)),
+            song.tracks.single().voice.measures.single(),
+        )
     }
 
     @Test
