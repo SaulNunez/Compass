@@ -11,7 +11,8 @@ android {
 
     defaultConfig {
         applicationId = "com.saulnunez.compass"
-        minSdk = 24
+        // alphaTab requires API 26 (see docs/adr/0001).
+        minSdk = 26
         targetSdk = 37
         versionCode = 1
         versionName = "1.0"
@@ -35,7 +36,17 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        // alphaTab's generated Kotlin model is marked with these opt-in annotations.
+        optIn.addAll("kotlin.ExperimentalUnsignedTypes", "kotlin.contracts.ExperimentalContracts")
+    }
+}
+
 dependencies {
+    implementation(project(":domain"))
+    implementation(project(":storage"))
+    implementation(libs.alphatab)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)

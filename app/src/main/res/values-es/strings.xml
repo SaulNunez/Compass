@@ -1,0 +1,231 @@
+<resources>
+    <string name="app_name">Compass</string>
+    <string name="practice_mode_subtitle">%1$s · Modo práctica</string>
+    <string name="practice_mode">Modo práctica</string>
+    <string name="back_to_library">Biblioteca</string>
+
+    <!-- Modo práctica: qué vistas de la pista se muestran. -->
+    <string name="view_tablature">Tablatura</string>
+    <string name="view_standard_notation">Notación estándar</string>
+    <!-- Tablatura y notación estándar, una sobre otra. -->
+    <string name="view_both">Ambas</string>
+
+    <!-- Modo práctica: reproducción -->
+    <string name="playback_play">Reproducir</string>
+    <string name="playback_play_from_cursor">Reproducir desde el cursor</string>
+    <string name="playback_stop">Detener</string>
+    <string name="playback_click">Metrónomo</string>
+    <string name="playback_count_in">Cuenta previa</string>
+    <string name="tempo_percentage">Tempo %1$d%%</string>
+    <string name="playback_loop">Bucle</string>
+    <string name="loop_of_section">Bucle: %1$s</string>
+    <string name="loop_of_measures">Bucle: compases %1$d–%2$d</string>
+    <string name="loop_title">Bucle</string>
+    <string name="loop_none">Sin bucle</string>
+    <string name="loop_section_option">%1$s (compases %2$d–%3$d)</string>
+    <string name="loop_measures_option">Compases</string>
+    <string name="song_cannot_open">No se puede abrir esta canción. Puede estar dañada o haberse creado con una versión más reciente de Compass.</string>
+    <string name="song_cannot_save">No se pudo guardar este cambio.</string>
+
+    <string name="enter_edit_mode">Editar</string>
+    <string name="leave_edit_mode">Listo</string>
+    <string name="edit_mode">Modo edición</string>
+    <string name="undo">Deshacer</string>
+    <string name="redo">Rehacer</string>
+    <string name="measure_number">Compás %1$d</string>
+    <string name="measure_incomplete">El compás %1$d está incompleto</string>
+    <string name="measure_overfull">El compás %1$d dura más de lo que permite su indicación de compás</string>
+    <string name="note_value_whole">Redonda</string>
+    <string name="note_value_half">Blanca</string>
+    <string name="note_value_quarter">Negra</string>
+    <string name="note_value_eighth">Corchea</string>
+    <string name="note_value_sixteenth">Semicorchea</string>
+    <string name="note_value_thirty_second">Fusa</string>
+    <string name="dotted">Con puntillo</string>
+    <string name="triplet">Tresillo</string>
+    <string name="rest">Silencio</string>
+    <string name="rest_short">S</string>
+    <string name="techniques">Técnicas de la nota del cursor</string>
+    <string name="tie">Ligadura</string>
+    <string name="technique_hammer_on_pull_off">Hammer-on/pull-off</string>
+    <string name="technique_slide">Slide</string>
+    <string name="technique_bend">Bend</string>
+    <string name="technique_bend_and_release">Bend y regreso</string>
+    <string name="technique_vibrato">Vibrato</string>
+    <string name="technique_palm_mute">Palm mute</string>
+    <string name="technique_dead_note">Nota muerta</string>
+    <string name="technique_slap">Slap</string>
+    <string name="technique_pop">Pop</string>
+    <string name="cursor_previous_measure">Compás anterior</string>
+    <string name="cursor_next_measure">Compás siguiente</string>
+    <string name="cursor_previous_beat">Tiempo anterior</string>
+    <string name="cursor_next_beat">Tiempo siguiente</string>
+    <string name="cursor_string_above">Cuerda de arriba</string>
+    <string name="cursor_string_below">Cuerda de abajo</string>
+    <string name="fret_pad">Teclado de trastes</string>
+
+    <string name="library_title">Biblioteca</string>
+    <string name="library_search">Buscar título o artista</string>
+    <string name="library_sort_title">Título</string>
+    <string name="library_sort_artist">Artista</string>
+    <string name="library_sort_last_practiced">Última práctica</string>
+    <string name="library_empty">Aún no hay canciones. Crea una para empezar.</string>
+    <string name="library_no_matches">Ninguna canción coincide con tu búsqueda.</string>
+    <string name="new_song">Nueva canción</string>
+    <string name="delete">Eliminar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="delete_song_title">¿Eliminar «%1$s»?</string>
+    <string name="delete_song_message">Se eliminarán la canción y sus ajustes de práctica. No se puede deshacer.</string>
+
+
+    <string name="backup_menu">Copia de seguridad</string>
+    <string name="backup_create">Hacer copia de seguridad</string>
+    <string name="backup_restore">Restaurar copia de seguridad</string>
+    <string name="backup_file_name">compass-copia-%1$s.zip</string>
+    <string name="backup_done">Copia de seguridad guardada.</string>
+    <string name="backup_failed">No se pudo guardar la copia de seguridad.</string>
+    <string name="restore_done">Copia de seguridad restaurada. Nuevas: %1$d · Copias de canciones cambiadas: %2$d · Ya estaban en tu biblioteca: %3$d</string>
+    <string name="restore_unreadable">No se pudieron leer (dañadas o de una versión más reciente de Compass): %1$d</string>
+    <string name="restore_not_a_backup">Ese archivo no es una copia de seguridad de Compass o está dañado.</string>
+    <string name="restore_failed">No se pudo leer la copia de seguridad.</string>
+
+    <string name="send_song_file">Enviar archivo de canción</string>
+    <string name="send_song_file_chooser">Enviar «%1$s»</string>
+    <string name="send_song_file_failed">No se pudo preparar el archivo de la canción.</string>
+    <string name="song_file_untitled">Canción</string>
+    <string name="song_file_import">Importar</string>
+    <string name="song_file_imported">«%1$s» se añadió a tu biblioteca.</string>
+    <string name="song_file_imported_as_copy">«%1$s» se añadió como copia. Tu versión no cambió.</string>
+    <string name="song_file_already_present">«%1$s» ya está en tu biblioteca.</string>
+    <string name="song_file_not_a_song_file">Ese archivo no es un archivo de canción de Compass o está dañado.</string>
+    <string name="song_file_too_new">Ese archivo de canción se creó con una versión más reciente de Compass. Actualiza Compass para importarlo.</string>
+    <string name="song_file_import_failed">No se pudo leer el archivo de la canción.</string>
+    <string name="new_song_title">Nueva canción</string>
+    <string name="field_title">Título</string>
+    <string name="field_artist">Artista</string>
+    <string name="field_tempo">Tempo (BPM)</string>
+    <string name="field_beats">Pulsos por compás</string>
+    <string name="field_beat_unit">Figura del pulso</string>
+    <string name="field_key">Armadura</string>
+    <string name="field_instrument">Instrumento</string>
+    <string name="field_tuning">Afinación</string>
+    <string name="create">Crear</string>
+
+    <string name="instrument_guitar_6">Guitarra (6 cuerdas)</string>
+    <string name="instrument_bass_4">Bajo (4 cuerdas)</string>
+    <string name="instrument_bass_5">Bajo (5 cuerdas)</string>
+    <string name="track_name_guitar">Guitarra</string>
+    <string name="track_name_bass">Bajo</string>
+
+    <string name="tuning_guitar_standard">Estándar</string>
+    <string name="tuning_guitar_drop_d">Drop D</string>
+    <string name="tuning_guitar_e_flat">Mi♭ (medio tono abajo)</string>
+    <string name="tuning_guitar_d_standard">Re estándar</string>
+    <string name="tuning_guitar_drop_c">Drop C</string>
+    <string name="tuning_guitar_dadgad">DADGAD</string>
+    <string name="tuning_bass_standard">Estándar</string>
+    <string name="tuning_bass_drop_d">Drop D</string>
+    <string name="tuning_bass_e_flat">Mi♭ (medio tono abajo)</string>
+    <string name="tuning_bass_five_string_standard">Estándar (Si-Mi-La-Re-Sol)</string>
+
+    <string-array name="major_keys">
+        <item>Do♭ mayor</item>
+        <item>Sol♭ mayor</item>
+        <item>Re♭ mayor</item>
+        <item>La♭ mayor</item>
+        <item>Mi♭ mayor</item>
+        <item>Si♭ mayor</item>
+        <item>Fa mayor</item>
+        <item>Do mayor</item>
+        <item>Sol mayor</item>
+        <item>Re mayor</item>
+        <item>La mayor</item>
+        <item>Mi mayor</item>
+        <item>Si mayor</item>
+        <item>Fa♯ mayor</item>
+        <item>Do♯ mayor</item>
+    </string-array>
+    <string-array name="minor_keys">
+        <item>La♭ menor</item>
+        <item>Mi♭ menor</item>
+        <item>Si♭ menor</item>
+        <item>Fa menor</item>
+        <item>Do menor</item>
+        <item>Sol menor</item>
+        <item>Re menor</item>
+        <item>La menor</item>
+        <item>Mi menor</item>
+        <item>Si menor</item>
+        <item>Fa♯ menor</item>
+        <item>Do♯ menor</item>
+        <item>Sol♯ menor</item>
+        <item>Re♯ menor</item>
+        <item>La♯ menor</item>
+    </string-array>
+    <string name="insert_measure_before">Insertar compás antes</string>
+    <string name="insert_measure_after">Insertar compás después</string>
+    <string name="delete_measure">Eliminar compás</string>
+    <string name="measure_settings_summary">%1$d/%2$d · %3$s · %4$d BPM</string>
+    <string name="change_measure_settings">Cambiar indicación de compás, armadura y tempo: %1$s</string>
+    <string name="measure_settings_title">Compás %1$d</string>
+    <string name="measure_settings_hint">Los cambios se aplican a todas las pistas, desde este compás hasta el siguiente cambio.</string>
+    <string name="apply">Aplicar</string>
+
+    <!-- Pistas -->
+    <string name="field_read_track">Pista que se lee</string>
+    <string name="field_edited_track">Pista</string>
+    <string name="add_track">Añadir pista</string>
+    <string name="track_settings">Ajustes de la pista</string>
+    <string name="new_track_title">Nueva pista</string>
+    <string name="field_track_name">Nombre</string>
+    <string name="field_sound">Sonido</string>
+    <string name="tuning_custom">Personalizada</string>
+    <string name="tuning_string">Cuerda %1$d</string>
+    <string name="tuning_string_lower">Bajar la cuerda %1$d un semitono</string>
+    <string name="tuning_string_higher">Subir la cuerda %1$d un semitono</string>
+    <string name="tuning_keeps_frets">Los trastes se mantienen; las notas suenan en la nueva afinación.</string>
+    <string name="remove_track">Eliminar pista</string>
+    <string name="pitch_name">%1$s%2$d</string>
+    <string-array name="pitch_classes">
+        <item>Do</item>
+        <item>Do♯</item>
+        <item>Re</item>
+        <item>Mi♭</item>
+        <item>Mi</item>
+        <item>Fa</item>
+        <item>Fa♯</item>
+        <item>Sol</item>
+        <item>La♭</item>
+        <item>La</item>
+        <item>Si♭</item>
+        <item>Si</item>
+    </string-array>
+    <string name="sound_clean_electric_guitar">Guitarra eléctrica limpia</string>
+    <string name="sound_overdriven_guitar">Guitarra con overdrive</string>
+    <string name="sound_distorted_electric_guitar">Guitarra eléctrica distorsionada</string>
+    <string name="sound_steel_acoustic_guitar">Guitarra acústica de cuerdas de acero</string>
+    <string name="sound_nylon_acoustic_guitar">Guitarra acústica de cuerdas de nailon</string>
+    <string name="sound_fingered_bass">Bajo con dedos</string>
+    <string name="sound_picked_bass">Bajo con púa</string>
+    <string name="sound_slap_bass">Bajo slap</string>
+    <string name="sound_fretless_bass">Bajo sin trastes</string>
+    <string name="new_section">Nueva sección</string>
+    <string name="edit_section">Editar sección</string>
+    <string name="copy_section">Copiar sección</string>
+    <string name="paste_measures">Pegar compases</string>
+    <string name="paste_measures_description">Pegar los compases copiados antes del compás %1$d, en todas las pistas</string>
+    <string name="no_section">Sin sección</string>
+    <string name="section_at_cursor">Sección: %1$s</string>
+    <string name="new_section_title">Nueva sección</string>
+    <string name="edit_section_title">Sección %1$s</string>
+    <string name="field_section_name">Nombre</string>
+    <string name="field_first_measure">Primer compás</string>
+    <string name="field_last_measure">Último compás</string>
+    <string name="section_overlaps">Estos compases pertenecen a otra sección.</string>
+    <string name="remove_section">Eliminar sección</string>
+    <string name="track_mix_heading">Pistas</string>
+    <string name="track_mute">Silenciar</string>
+    <string name="track_solo">Solo</string>
+    <string name="track_mute_description">Silenciar %1$s</string>
+    <string name="track_solo_description">Solo %1$s</string>
+</resources>

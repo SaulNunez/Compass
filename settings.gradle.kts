@@ -24,4 +24,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "Compass"
 include(":app")
+include(":domain")
+include(":storage")
  

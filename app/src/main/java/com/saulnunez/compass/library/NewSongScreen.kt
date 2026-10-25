@@ -1,0 +1,156 @@
+package com.saulnunez.compass.library
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.saulnunez.compass.R
+import com.saulnunez.compass.domain.KeySignature
+import com.saulnunez.compass.domain.Measure
+import com.saulnunez.compass.domain.Song
+import com.saulnunez.compass.domain.SongId
+import com.saulnunez.compass.domain.SupportedInstrument
+import com.saulnunez.compass.domain.Tempo
+import com.saulnunez.compass.domain.TimeSignature
+import com.saulnunez.compass.domain.newSong
+import com.saulnunez.compass.ui.BackToLibraryButton
+import com.saulnunez.compass.ui.BEATS_RANGE
+import com.saulnunez.compass.ui.BEAT_UNITS
+import com.saulnunez.compass.ui.Dropdown
+import com.saulnunez.compass.ui.NumberField
+import com.saulnunez.compass.ui.TEMPO_RANGE
+import com.saulnunez.compass.ui.theme.CompassTheme
+import java.util.UUID
+
+/**
+ * Asks for what a new Song needs and hands the created Song to [onCreate].
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NewSongScreen(onCreate: (Song) -> Unit, onBack: () -> Unit, modifier: Modifier = Modifier) {
+    var title by rememberSaveable { mutableStateOf("") }
+    var artist by rememberSaveable { mutableStateOf("") }
+    var tempoText by rememberSaveable { mutableStateOf("120") }
+    var beatsText by rememberSaveable { mutableStateOf("4") }
+    var beatUnit by rememberSaveable { mutableIntStateOf(4) }
+    var keyIndex by rememberSaveable { mutableIntStateOf(KeySignature.ALL.indexOf(KeySignature.C_MAJOR)) }
+    var instrument by rememberSaveable { mutableStateOf(SupportedInstrument.GUITAR_6) }
+    var tuning by rememberSaveable { mutableStateOf(instrument.tuningPresets.first()) }
+
+    val tempo = tempoText.toIntOrNull()?.takeIf { it in TEMPO_RANGE }
+    val beats = beatsText.toIntOrNull()?.takeIf { it in BEATS_RANGE }
+    val trackName = stringResource(instrument.defaultTrackName())
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.new_song_title)) },
+                navigationIcon = { BackToLibraryButton(onBack) },
+            )
+        },
+    ) { innerPadding ->
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+        ) {
+            OutlinedTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text(stringResource(R.string.field_title)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = artist,
+                onValueChange = { artist = it },
+                label = { Text(stringResource(R.string.field_artist)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            NumberField(R.string.field_tempo, tempoText, isError = tempo == null) { tempoText = it }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                NumberField(R.string.field_beats, beatsText, isError = beats == null, Modifier.weight(1f)) { beatsText = it }
+                Dropdown(
+                    label = stringResource(R.string.field_beat_unit),
+                    options = BEAT_UNITS,
+                    selected = beatUnit,
+                    optionLabel = { it.toString() },
+                    onSelect = { beatUnit = it },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Dropdown(
+                label = stringResource(R.string.field_key),
+                options = KeySignature.ALL,
+                selected = KeySignature.ALL[keyIndex],
+                optionLabel = { keySignatureLabel(it) },
+                onSelect = { keyIndex = KeySignature.ALL.indexOf(it) },
+            )
+            Dropdown(
+                label = stringResource(R.string.field_instrument),
+                options = SupportedInstrument.entries,
+                selected = instrument,
+                optionLabel = { stringResource(it.label()) },
+                onSelect = {
+                    instrument = it
+                    tuning = it.tuningPresets.first()
+                },
+            )
+            Dropdown(
+                label = stringResource(R.string.field_tuning),
+                options = instrument.tuningPresets,
+                selected = tuning,
+                optionLabel = { stringResource(it.label()) },
+                onSelect = { tuning = it },
+            )
+            Button(
+                enabled = title.isNotBlank() && tempo != null && beats != null,
+                onClick = {
+                    onCreate(
+                        newSong(
+                            id = SongId(UUID.randomUUID().toString()),
+                            title = title.trim(),
+                            artist = artist.trim(),
+                            startingMeasure = Measure(TimeSignature(beats!!, beatUnit), KeySignature.ALL[keyIndex], Tempo(tempo!!)),
+                            trackName = trackName,
+                            instrument = tuning.instrument(),
+                        ),
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(stringResource(R.string.create)) }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun NewSongScreenPreview() {
+    CompassTheme {
+        NewSongScreen(onCreate = {}, onBack = {})
+    }
+}

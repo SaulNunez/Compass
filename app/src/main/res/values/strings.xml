@@ -1,3 +1,269 @@
 <resources>
     <string name="app_name">Compass</string>
+    <!-- Subtitle under a Song's title in Practice mode; %1$s is the artist. -->
+    <string name="practice_mode_subtitle">%1$s · Practice mode</string>
+    <string name="practice_mode">Practice mode</string>
+    <string name="back_to_library">Library</string>
+
+    <!-- Practice mode: which views of the Track to show. -->
+    <string name="view_tablature">Tablature</string>
+    <string name="view_standard_notation">Standard notation</string>
+    <!-- Both Tablature and Standard notation, stacked. -->
+    <string name="view_both">Both</string>
+
+    <!-- Practice mode: Playback -->
+    <string name="playback_play">Play</string>
+    <!-- Edit mode: what the Play action does, for screen readers. -->
+    <string name="playback_play_from_cursor">Play from the cursor</string>
+    <!-- Stops Playback and goes back to where it started. -->
+    <string name="playback_stop">Stop</string>
+    <!-- Toggles the click track (metronome) during Playback. -->
+    <string name="playback_click">Click</string>
+    <!-- Toggles one Measure of clicks before Playback starts. -->
+    <string name="playback_count_in">Count-in</string>
+    <!-- The practice tempo as a percentage of the Song's written Tempos; %1$d is the percentage. -->
+    <string name="tempo_percentage">Tempo %1$d%%</string>
+    <!-- Opens the choice of a Loop (the Measures Playback repeats) when there is none. -->
+    <string name="playback_loop">Loop</string>
+    <!-- The Loop in use when it is a Section; %1$s is the Section's name. -->
+    <string name="loop_of_section">Loop: %1$s</string>
+    <!-- The Loop in use when it is a range of Measures; %1$d and %2$d are its first and last Measure. -->
+    <string name="loop_of_measures">Loop: Measures %1$d–%2$d</string>
+    <string name="loop_title">Loop</string>
+    <!-- Choice in the Loop dialog: play to the end of the Song instead. -->
+    <string name="loop_none">No Loop</string>
+    <!-- Choice in the Loop dialog: a Section; %1$s is its name, %2$d and %3$d its first and last Measure. -->
+    <string name="loop_section_option">%1$s (Measures %2$d–%3$d)</string>
+    <!-- Choice in the Loop dialog: any range of Measures, given below it. -->
+    <string name="loop_measures_option">Measures</string>
+    <string name="song_cannot_open">This Song can’t be opened. It may be damaged or made with a newer version of Compass.</string>
+    <string name="song_cannot_save">This change couldn’t be saved.</string>
+
+    <!-- Edit mode -->
+    <!-- The explicit action in Practice mode that switches to Edit mode. -->
+    <string name="enter_edit_mode">Edit</string>
+    <!-- Leaves Edit mode and returns to Practice mode. -->
+    <string name="leave_edit_mode">Done</string>
+    <string name="edit_mode">Edit mode</string>
+    <string name="undo">Undo</string>
+    <string name="redo">Redo</string>
+    <!-- %1$d is the Measure number. -->
+    <string name="measure_number">Measure %1$d</string>
+    <string name="measure_incomplete">Measure %1$d is incomplete</string>
+    <string name="measure_overfull">Measure %1$d is too long for its time signature</string>
+    <string name="note_value_whole">Whole note</string>
+    <string name="note_value_half">Half note</string>
+    <string name="note_value_quarter">Quarter note</string>
+    <string name="note_value_eighth">Eighth note</string>
+    <string name="note_value_sixteenth">Sixteenth note</string>
+    <string name="note_value_thirty_second">Thirty-second note</string>
+    <string name="dotted">Dotted</string>
+    <string name="triplet">Triplet</string>
+    <string name="rest">Rest</string>
+    <!-- Marks a Rest in the small Measure grid; keep it short. -->
+    <string name="rest_short">R</string>
+    <string name="techniques">Techniques for the Note at the cursor</string>
+    <string name="tie">Tie</string>
+    <string name="technique_hammer_on_pull_off">Hammer-on/pull-off</string>
+    <string name="technique_slide">Slide</string>
+    <string name="technique_bend">Bend</string>
+    <string name="technique_bend_and_release">Bend and release</string>
+    <string name="technique_vibrato">Vibrato</string>
+    <string name="technique_palm_mute">Palm mute</string>
+    <string name="technique_dead_note">Dead note</string>
+    <string name="technique_slap">Slap</string>
+    <string name="technique_pop">Pop</string>
+    <string name="cursor_previous_measure">Previous Measure</string>
+    <string name="cursor_next_measure">Next Measure</string>
+    <string name="cursor_previous_beat">Previous beat</string>
+    <string name="cursor_next_beat">Next beat</string>
+    <string name="cursor_string_above">String above</string>
+    <string name="cursor_string_below">String below</string>
+    <string name="fret_pad">Fret number pad</string>
+
+    <!-- Library -->
+    <string name="library_title">Library</string>
+    <string name="library_search">Search title or artist</string>
+    <string name="library_sort_title">Title</string>
+    <string name="library_sort_artist">Artist</string>
+    <string name="library_sort_last_practiced">Last practiced</string>
+    <string name="library_empty">No Songs yet. Create one to get started.</string>
+    <string name="library_no_matches">No Songs match your search.</string>
+    <string name="new_song">New Song</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <!-- %1$s is the Song title. -->
+    <string name="delete_song_title">Delete “%1$s”?</string>
+    <string name="delete_song_message">This removes the Song and its practice settings. It can’t be undone.</string>
+
+
+    <!-- Backup -->
+    <string name="backup_menu">Backup</string>
+    <string name="backup_create">Back up Library</string>
+    <string name="backup_restore">Restore a Backup</string>
+    <!-- Suggested file name for a new Backup; %1$s is today’s date, e.g. 2026-10-25. -->
+    <string name="backup_file_name">compass-backup-%1$s.zip</string>
+    <string name="backup_done">Library backed up.</string>
+    <string name="backup_failed">Couldn’t write the Backup.</string>
+    <!-- %1$d Songs added, %2$d changed Songs added as copies, %3$d Songs skipped because they were already there. -->
+    <string name="restore_done">Backup restored. New: %1$d · Copies of changed Songs: %2$d · Already in your Library: %3$d</string>
+    <!-- %1$d is how many Songs in the Backup could not be read. -->
+    <string name="restore_unreadable">Couldn’t read (damaged or from a newer Compass): %1$d</string>
+    <string name="restore_not_a_backup">That file isn’t a Compass Backup, or it’s damaged.</string>
+    <string name="restore_failed">Couldn’t read the Backup.</string>
+
+    <!-- Song file -->
+    <string name="send_song_file">Send Song file</string>
+    <!-- Title of the share sheet; %1$s is the Song title. -->
+    <string name="send_song_file_chooser">Send “%1$s”</string>
+    <string name="send_song_file_failed">Couldn’t prepare the Song file.</string>
+    <!-- Used as the Song file name when the Song’s title can’t be used as one. -->
+    <string name="song_file_untitled">Song</string>
+    <string name="song_file_import">Import</string>
+    <!-- %1$s is the imported Song’s title. -->
+    <string name="song_file_imported">“%1$s” added to your Library.</string>
+    <!-- %1$s is the imported Song’s title. -->
+    <string name="song_file_imported_as_copy">“%1$s” added as a copy. Your own version is unchanged.</string>
+    <!-- %1$s is the imported Song’s title. -->
+    <string name="song_file_already_present">“%1$s” is already in your Library.</string>
+    <string name="song_file_not_a_song_file">That file isn’t a Compass Song file, or it’s damaged.</string>
+    <string name="song_file_too_new">That Song file was made with a newer version of Compass. Update Compass to import it.</string>
+    <string name="song_file_import_failed">Couldn’t read the Song file.</string>
+    <!-- New Song -->
+    <string name="new_song_title">New Song</string>
+    <string name="field_title">Title</string>
+    <string name="field_artist">Artist</string>
+    <string name="field_tempo">Tempo (BPM)</string>
+    <string name="field_beats">Beats per measure</string>
+    <string name="field_beat_unit">Beat unit</string>
+    <string name="field_key">Key signature</string>
+    <string name="field_instrument">Instrument</string>
+    <string name="field_tuning">Tuning</string>
+    <string name="create">Create</string>
+
+    <string name="instrument_guitar_6">Guitar (6 strings)</string>
+    <string name="instrument_bass_4">Bass (4 strings)</string>
+    <string name="instrument_bass_5">Bass (5 strings)</string>
+    <!-- Default name for the first Track of a new Song. -->
+    <string name="track_name_guitar">Guitar</string>
+    <string name="track_name_bass">Bass</string>
+
+    <string name="tuning_guitar_standard">Standard</string>
+    <string name="tuning_guitar_drop_d">Drop D</string>
+    <string name="tuning_guitar_e_flat">E♭ (half step down)</string>
+    <string name="tuning_guitar_d_standard">D standard</string>
+    <string name="tuning_guitar_drop_c">Drop C</string>
+    <string name="tuning_guitar_dadgad">DADGAD</string>
+    <string name="tuning_bass_standard">Standard</string>
+    <string name="tuning_bass_drop_d">Drop D</string>
+    <string name="tuning_bass_e_flat">E♭ (half step down)</string>
+    <string name="tuning_bass_five_string_standard">Standard (B-E-A-D-G)</string>
+
+    <!-- Key names indexed from 7 flats to 7 sharps. -->
+    <string-array name="major_keys">
+        <item>C♭ major</item>
+        <item>G♭ major</item>
+        <item>D♭ major</item>
+        <item>A♭ major</item>
+        <item>E♭ major</item>
+        <item>B♭ major</item>
+        <item>F major</item>
+        <item>C major</item>
+        <item>G major</item>
+        <item>D major</item>
+        <item>A major</item>
+        <item>E major</item>
+        <item>B major</item>
+        <item>F♯ major</item>
+        <item>C♯ major</item>
+    </string-array>
+    <string-array name="minor_keys">
+        <item>A♭ minor</item>
+        <item>E♭ minor</item>
+        <item>B♭ minor</item>
+        <item>F minor</item>
+        <item>C minor</item>
+        <item>G minor</item>
+        <item>D minor</item>
+        <item>A minor</item>
+        <item>E minor</item>
+        <item>B minor</item>
+        <item>F♯ minor</item>
+        <item>C♯ minor</item>
+        <item>G♯ minor</item>
+        <item>D♯ minor</item>
+        <item>A♯ minor</item>
+    </string-array>
+    <string name="insert_measure_before">Insert Measure before</string>
+    <string name="insert_measure_after">Insert Measure after</string>
+    <string name="delete_measure">Delete Measure</string>
+    <string name="measure_settings_summary">%1$d/%2$d · %3$s · %4$d BPM</string>
+    <string name="change_measure_settings">Change time signature, key signature and Tempo: %1$s</string>
+    <string name="measure_settings_title">Measure %1$d</string>
+    <string name="measure_settings_hint">Changes apply to every Track, from this Measure until the next change.</string>
+    <string name="apply">Apply</string>
+
+    <!-- Tracks -->
+    <!-- Practice mode: picks the Track the views show. -->
+    <string name="field_read_track">Track being read</string>
+    <!-- Edit mode: picks the Track the cursor writes into. -->
+    <string name="field_edited_track">Track</string>
+    <string name="add_track">Add Track</string>
+    <string name="track_settings">Track settings</string>
+    <string name="new_track_title">New Track</string>
+    <string name="field_track_name">Name</string>
+    <string name="field_sound">Sound</string>
+    <!-- A Tuning set string by string rather than a ready-made one. -->
+    <string name="tuning_custom">Custom</string>
+    <!-- %1$d is the string number, counted from the highest string. -->
+    <string name="tuning_string">String %1$d</string>
+    <!-- %1$d is the string number. -->
+    <string name="tuning_string_lower">Tune string %1$d a semitone lower</string>
+    <string name="tuning_string_higher">Tune string %1$d a semitone higher</string>
+    <string name="tuning_keeps_frets">Frets stay as written; the Notes sound in the new Tuning.</string>
+    <string name="remove_track">Remove Track</string>
+    <!-- A pitch: %1$s is the note name, %2$d its octave, e.g. E2. -->
+    <string name="pitch_name">%1$s%2$d</string>
+    <string-array name="pitch_classes">
+        <item>C</item>
+        <item>C♯</item>
+        <item>D</item>
+        <item>E♭</item>
+        <item>E</item>
+        <item>F</item>
+        <item>F♯</item>
+        <item>G</item>
+        <item>A♭</item>
+        <item>A</item>
+        <item>B♭</item>
+        <item>B</item>
+    </string-array>
+    <string name="sound_clean_electric_guitar">Clean electric guitar</string>
+    <string name="sound_overdriven_guitar">Overdriven guitar</string>
+    <string name="sound_distorted_electric_guitar">Distorted electric guitar</string>
+    <string name="sound_steel_acoustic_guitar">Steel-string acoustic guitar</string>
+    <string name="sound_nylon_acoustic_guitar">Nylon-string acoustic guitar</string>
+    <string name="sound_fingered_bass">Fingered bass</string>
+    <string name="sound_picked_bass">Picked bass</string>
+    <string name="sound_slap_bass">Slap bass</string>
+    <string name="sound_fretless_bass">Fretless bass</string>
+    <string name="new_section">New Section</string>
+    <string name="edit_section">Edit Section</string>
+    <string name="copy_section">Copy Section</string>
+    <string name="paste_measures">Paste Measures</string>
+    <string name="paste_measures_description">Paste the copied Measures before Measure %1$d, in every Track</string>
+    <string name="no_section">No Section</string>
+    <string name="section_at_cursor">Section: %1$s</string>
+    <string name="new_section_title">New Section</string>
+    <string name="edit_section_title">Section %1$s</string>
+    <string name="field_section_name">Name</string>
+    <string name="field_first_measure">First Measure</string>
+    <string name="field_last_measure">Last Measure</string>
+    <string name="section_overlaps">These Measures belong to another Section.</string>
+    <string name="remove_section">Remove Section</string>
+    <string name="track_mix_heading">Tracks</string>
+    <string name="track_mute">Mute</string>
+    <string name="track_solo">Solo</string>
+    <string name="track_mute_description">Mute %1$s</string>
+    <string name="track_solo_description">Solo %1$s</string>
 </resources>
