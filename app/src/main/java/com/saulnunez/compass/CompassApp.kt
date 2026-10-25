@@ -23,9 +23,15 @@ import com.saulnunez.compass.domain.SongId
 import com.saulnunez.compass.library.LibraryScreen
 import com.saulnunez.compass.library.NewSongScreen
 import com.saulnunez.compass.practice.PracticeScreen
+import com.saulnunez.compass.songfile.SONG_FILE_OPEN_MIME_TYPES
+import com.saulnunez.compass.songfile.shareSongFile
+import com.saulnunez.compass.storage.AddResult
 import com.saulnunez.compass.storage.NotABackupException
+import com.saulnunez.compass.storage.NotASongFileException
 import com.saulnunez.compass.storage.RestoreReport
 import com.saulnunez.compass.storage.SongStore
+import com.saulnunez.compass.storage.UnsupportedSongFormatException
+import com.saulnunez.compass.storage.importSongFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -81,6 +87,38 @@ fun CompassApp() {
         }
     }
 
+    val importSongFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val imported = withContext(Dispatchers.IO) {
+                runCatching {
+                    val result = store.importSongFile(context.contentResolver.openInputStream(uri)!!)
+                    result to store.load(result.id).title
+                }
+            }
+            reloads++
+            showMessage(
+                imported.fold(
+                    onSuccess = { (result, title) -> resources.getString(result.importMessage(), title) },
+                    onFailure = {
+                        resources.getString(
+                            when (it) {
+                                is NotASongFileException -> R.string.song_file_not_a_song_file
+                                is UnsupportedSongFormatException -> R.string.song_file_too_new
+                                else -> R.string.song_file_import_failed
+                            },
+                        )
+                    },
+                ),
+            )
+        }
+    }
+    val shareSong: (SongId) -> Unit = { id ->
+        scope.launch {
+            if (!shareSongFile(context, store, id)) showMessage(resources.getString(R.string.song_share_failed))
+        }
+    }
+
     when (destination) {
         Destination.Library -> {
             var library by remember { mutableStateOf<Library?>(null) }
@@ -92,6 +130,8 @@ fun CompassApp() {
                 onNewSong = { route = NEW_SONG_ROUTE },
                 onBackUp = { backUp.launch(resources.getString(R.string.backup_file_name, LocalDate.now().toString())) },
                 onRestore = { restore.launch(BACKUP_OPEN_MIME_TYPES) },
+                onImportSong = { importSongFile.launch(SONG_FILE_OPEN_MIME_TYPES) },
+                onShareSong = shareSong,
                 onDeleteSong = { id ->
                     scope.launch {
                         withContext(Dispatchers.IO) { store.delete(id) }
@@ -125,7 +165,7 @@ fun CompassApp() {
                     goToLibrary()
                 }
             }
-            song?.let { PracticeScreen(it, onBack = goToLibrary) }
+            song?.let { PracticeScreen(it, onBack = goToLibrary, onShare = { shareSong(it.id) }) }
         }
     }
 }
@@ -133,6 +173,12 @@ fun CompassApp() {
 private fun RestoreReport.summary(resources: Resources): String {
     val restored = resources.getString(R.string.restore_done, added, addedAsCopies, alreadyPresent)
     return if (unreadable == 0) restored else restored + "\n" + resources.getString(R.string.restore_unreadable, unreadable)
+}
+
+private fun AddResult.importMessage(): Int = when (this) {
+    is AddResult.Added -> R.string.song_file_imported
+    is AddResult.AddedAsCopy -> R.string.song_file_imported_as_copy
+    is AddResult.AlreadyPresent -> R.string.song_file_already_present
 }
 
 private const val BACKUP_MIME_TYPE = "application/zip"

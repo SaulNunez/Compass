@@ -12,6 +12,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -31,7 +32,7 @@ import com.saulnunez.compass.ui.theme.CompassTheme
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PracticeScreen(song: Song, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun PracticeScreen(song: Song, onBack: () -> Unit, onShare: () -> Unit, modifier: Modifier = Modifier) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -50,6 +51,7 @@ fun PracticeScreen(song: Song, onBack: () -> Unit, modifier: Modifier = Modifier
                     }
                 },
                 navigationIcon = { BackToLibraryButton(onBack) },
+                actions = { TextButton(onClick = onShare) { Text(stringResource(R.string.song_share)) } },
             )
         },
     ) { innerPadding ->
@@ -91,6 +93,6 @@ private fun TablatureView(song: Song, modifier: Modifier = Modifier) {
 @Composable
 private fun PracticeScreenPreview() {
     CompassTheme {
-        PracticeScreen(demoSong, onBack = {})
+        PracticeScreen(demoSong, onBack = {}, onShare = {})
     }
 }
