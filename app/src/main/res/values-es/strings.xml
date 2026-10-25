@@ -136,4 +136,12 @@
         <item>Re♯ menor</item>
         <item>La♯ menor</item>
     </string-array>
+    <string name="insert_measure_before">Insertar compás antes</string>
+    <string name="insert_measure_after">Insertar compás después</string>
+    <string name="delete_measure">Eliminar compás</string>
+    <string name="measure_settings_summary">%1$d/%2$d · %3$s · %4$d BPM</string>
+    <string name="change_measure_settings">Cambiar indicación de compás, armadura y tempo: %1$s</string>
+    <string name="measure_settings_title">Compás %1$d</string>
+    <string name="measure_settings_hint">Los cambios se aplican a todas las pistas, desde este compás hasta el siguiente cambio.</string>
+    <string name="apply">Aplicar</string>
 </resources>

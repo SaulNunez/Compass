@@ -77,6 +77,45 @@ class EditSession private constructor(
         return apply(DeleteElement(track, cursor.measure, cursor.beat)).let { it.moveTo(it.cursor) }
     }
 
+    /** Inserts an empty Measure before the cursor's Measure, in every Track, and moves the cursor into it. */
+    fun insertMeasureBefore(): EditSession =
+        apply(InsertMeasure(cursor.measure)).moveTo(cursor.copy(beat = 0))
+
+    /** Inserts an empty Measure after the cursor's Measure, in every Track, and moves the cursor into it. */
+    fun insertMeasureAfter(): EditSession =
+        apply(InsertMeasure(cursor.measure + 1)).moveTo(cursor.copy(measure = cursor.measure + 1, beat = 0))
+
+    /** Whether the cursor's Measure can be deleted: every Song keeps at least one Measure. */
+    val canDeleteMeasure: Boolean get() = song.measures.size > 1
+
+    /** Deletes the cursor's Measure from every Track; the cursor stays on the Measure that moves up, or the new last one. */
+    fun deleteMeasure(): EditSession {
+        if (!canDeleteMeasure) return this
+        val deleted = apply(DeleteMeasure(cursor.measure))
+        return deleted.moveTo(cursor.copy(measure = cursor.measure.coerceAtMost(deleted.song.measures.lastIndex), beat = 0))
+    }
+
+    /** The time signature, key signature and Tempo of the cursor's Measure. */
+    val measureAtCursor: Measure get() = song.measures[cursor.measure]
+
+    /**
+     * Gives the cursor's Measure the time signature, key signature and Tempo of [settings], as one
+     * edit; each changed setting lasts until the next change of that setting already written.
+     */
+    fun changeMeasure(settings: Measure): EditSession =
+        apply(ChangeMeasure(cursor.measure, settings)).let { changed ->
+            // A shorter time signature can fill the Measure, taking away the free beat the cursor was on.
+            changed.moveTo(cursor.copy(beat = cursor.beat.coerceAtMost(changed.lastBeat(cursor.measure))))
+        }
+
+    fun changeTimeSignature(timeSignature: TimeSignature): EditSession =
+        changeMeasure(measureAtCursor.copy(timeSignature = timeSignature))
+
+    fun changeKeySignature(keySignature: KeySignature): EditSession =
+        changeMeasure(measureAtCursor.copy(keySignature = keySignature))
+
+    fun changeTempo(tempo: Tempo): EditSession = changeMeasure(measureAtCursor.copy(tempo = tempo))
+
     private fun chooseDuration(chosen: Duration): EditSession =
         if (elementAtCursor != null) {
             apply(ChangeDuration(track, cursor.measure, cursor.beat, chosen)).copy(duration = chosen)
