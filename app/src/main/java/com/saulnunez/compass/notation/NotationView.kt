@@ -95,14 +95,17 @@ fun NotationView(
     // Follows the system's light or dark theme, which can change while the screen is open.
     val theme = MaterialTheme.colorScheme.notationTheme()
     // alphaTab's first drawing of a view can take a while (much longer in debug builds), so the
-    // empty notation area shows it is still being prepared until then.
+    // empty notation area shows it is still being prepared until then. Only the first drawing:
+    // later redraws (an edit, another view) are quick and keep showing the previous notation.
     var firstDrawn by remember { mutableStateOf(false) }
     Box(modifier) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { context ->
                 AlphaTabView(context, null).apply {
-                    api.postRenderFinished.on { if (api.score != null) firstDrawn = true }
+                    onFirstRender { firstDrawn = true }
+                    // A failed drawing must not leave the indicator spinning for good.
+                    api.error.on { firstDrawn = true }
                     // Listen before the player is created, so its first ready event isn't missed.
                     player?.attach(api)
                     if (player != null) startPlayerAfterFirstRender(settings)
@@ -145,13 +148,21 @@ fun NotationView(
  * soundfont on the main thread, opening the audio output, and parsing the soundfont on a worker
  * thread) competed with the first render and held up the Song appearing.
  */
-private fun AlphaTabView.startPlayerAfterFirstRender(settings: Settings) {
+private fun AlphaTabView.startPlayerAfterFirstRender(settings: Settings) = onFirstRender {
+    settings.player.playerMode = PlayerMode.EnabledSynthesizer
+    // Creates the player and loads the MIDI for the Score shown, without drawing it again.
+    api.updateSettings()
+}
+
+/**
+ * Runs [action] once, on the main thread, when the view has first drawn a Score. Renders that
+ * finish before a Score is set (alphaTab draws nothing at width 0) don't count.
+ */
+private fun AlphaTabView.onFirstRender(action: () -> Unit) {
     var unsubscribe: () -> Unit = {}
     unsubscribe = api.postRenderFinished.on {
         if (api.score == null) return@on
         unsubscribe()
-        settings.player.playerMode = PlayerMode.EnabledSynthesizer
-        // Creates the player and loads the MIDI for the Score shown, without drawing it again.
-        api.updateSettings()
+        action()
     }
 }
