@@ -11,7 +11,6 @@ import alphaTab.model.Score
 import alphaTab.model.Staff
 import alphaTab.model.Voice
 import com.saulnunez.compass.domain.Duration
-import com.saulnunez.compass.domain.InstrumentKind
 import com.saulnunez.compass.domain.KeySignature
 import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.Rest
@@ -26,8 +25,9 @@ import alphaTab.model.Tuning as AlphaTabTuning
 /**
  * Translates a Compass Song into alphaTab's Score so alphaTab can draw and play it (ADR-0001).
  * The Song stays the source of truth; the Score is rebuilt whenever it is needed.
+ * [settings] must be the same Settings the rendering view uses.
  */
-fun Song.toAlphaTabScore(settings: Settings = Settings()): Score {
+fun Song.toAlphaTabScore(settings: Settings): Score {
     val score = Score()
     score.title = title
     score.artist = artist
@@ -47,48 +47,40 @@ fun Song.toAlphaTabScore(settings: Settings = Settings()): Score {
         score.addMasterBar(masterBar)
     }
 
-    tracks.forEachIndexed { index, track ->
-        val alphaTabTrack = track.toAlphaTabTrack(index)
+    tracks.forEach { track ->
+        val alphaTabTrack = track.toAlphaTabTrack()
         score.addTrack(alphaTabTrack)
-        trackBars(track).forEach(alphaTabTrack.staves[0]::addBar)
+        alphaTabBarsFor(track).forEach(alphaTabTrack.staves[0]::addBar)
     }
 
     score.finish(settings)
     return score
 }
 
-private fun Song.trackBars(track: Track): List<Bar> = measures.mapIndexed { index, measure ->
+private fun Song.alphaTabBarsFor(track: Track): List<Bar> = measures.mapIndexed { index, measure ->
     Bar().apply {
         keySignature = measure.keySignature.toAlphaTab()
         keySignatureType = if (measure.keySignature.isMinor) KeySignatureType.Minor else KeySignatureType.Major
-        addVoice(track.voiceForMeasure(index))
+        addVoice(track.alphaTabVoiceFor(index))
     }
 }
 
-private fun Track.toAlphaTabTrack(index: Int): AlphaTabTrack {
+private fun Track.toAlphaTabTrack(): AlphaTabTrack {
     val alphaTabTrack = AlphaTabTrack()
     alphaTabTrack.name = name
-    alphaTabTrack.playbackInfo.program = when (instrument.kind) {
-        InstrumentKind.GUITAR -> CLEAN_ELECTRIC_GUITAR_PROGRAM
-        InstrumentKind.BASS -> FINGERED_BASS_PROGRAM
-    }
-    alphaTabTrack.playbackInfo.primaryChannel = (index * 2).toDouble()
-    alphaTabTrack.playbackInfo.secondaryChannel = (index * 2 + 1).toDouble()
 
     val staff = Staff()
     // Both list strings from the top tablature line (Compass string 1) downwards.
     staff.stringTuning = AlphaTabTuning("", DoubleList(*instrument.tuning.openStrings.map { it.midi.toDouble() }.toDoubleArray()))
-    staff.showTablature = true
-    staff.showStandardNotation = true
     alphaTabTrack.addStaff(staff)
     return alphaTabTrack
 }
 
-private fun Track.voiceForMeasure(measureIndex: Int): Voice {
-    val voice = Voice()
-    val elements = this.voice.measures[measureIndex]
+private fun Track.alphaTabVoiceFor(measureIndex: Int): Voice {
+    val alphaTabVoice = Voice()
+    val elements = voice.measures[measureIndex]
     if (elements.isEmpty()) {
-        voice.addBeat(Beat().apply { isEmpty = true })
+        alphaTabVoice.addBeat(Beat().apply { isEmpty = true })
     }
     elements.forEach { element ->
         val beat = Beat()
@@ -103,9 +95,9 @@ private fun Track.voiceForMeasure(measureIndex: Int): Voice {
             )
             is Rest -> Unit
         }
-        voice.addBeat(beat)
+        alphaTabVoice.addBeat(beat)
     }
-    return voice
+    return alphaTabVoice
 }
 
 private fun Duration.toAlphaTab(): AlphaTabDuration = when (this) {
@@ -121,7 +113,3 @@ private fun KeySignature.toAlphaTab(): AlphaTabKeySignature = AlphaTabKeySignatu
 
 /** alphaTab's tempo reference code for "beats are quarter notes". */
 private const val QUARTER_NOTE_REFERENCE = 2.0
-
-// General MIDI programs; Track Sounds will replace these.
-private const val CLEAN_ELECTRIC_GUITAR_PROGRAM = 27.0
-private const val FINGERED_BASS_PROGRAM = 33.0

@@ -1,5 +1,6 @@
 package com.saulnunez.compass.notation
 
+import alphaTab.Settings
 import com.saulnunez.compass.domain.Duration
 import com.saulnunez.compass.domain.Instrument
 import com.saulnunez.compass.domain.InstrumentKind
@@ -50,10 +51,10 @@ class AlphaTabTranslationTest {
         ),
     )
 
-    private val score = song.toAlphaTabScore()
+    private val score = song.toAlphaTabScore(Settings())
 
     @Test
-    fun songDetailsCarryOver() {
+    fun `title, artist and Track name carry over`() {
         assertEquals("Translation check", score.title)
         assertEquals("Compass", score.artist)
         assertEquals(1, score.tracks.length.toInt())
@@ -61,13 +62,13 @@ class AlphaTabTranslationTest {
     }
 
     @Test
-    fun tuningIsListedFromTheTopTablatureLine() {
+    fun `Tuning is listed from the top tablature line down`() {
         val tuning = score.tracks[0].staves[0].tuning
         assertEquals(listOf(64, 59, 55, 50, 45, 40), (0 until tuning.length.toInt()).map { tuning[it].toInt() })
     }
 
     @Test
-    fun notesKeepTheirFretAndLandOnTheMatchingTablatureLine() {
+    fun `Notes keep their fret and land on the matching tablature line`() {
         val beats = score.tracks[0].staves[0].bars[0].voices[0].beats
 
         // alphaTab counts strings from the lowest, so Compass string 1 (high E) is alphaTab string 6.
@@ -85,7 +86,7 @@ class AlphaTabTranslationTest {
     }
 
     @Test
-    fun durationsAndRestsCarryOver() {
+    fun `durations and Rests carry over`() {
         val beats = score.tracks[0].staves[0].bars[0].voices[0].beats
         assertEquals(AlphaTabDuration.Quarter, beats[0].duration)
         assertEquals(AlphaTabDuration.Quarter, beats[1].duration)
@@ -94,7 +95,7 @@ class AlphaTabTranslationTest {
     }
 
     @Test
-    fun eachMeasureKeepsItsTimeSignatureKeySignatureAndTempo() {
+    fun `each Measure keeps its time signature, key signature and Tempo`() {
         assertEquals(2, score.masterBars.length.toInt())
 
         val second = score.masterBars[1]
