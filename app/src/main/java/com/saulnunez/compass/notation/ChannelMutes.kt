@@ -1,6 +1,7 @@
 package com.saulnunez.compass.notation
 
 import alphaTab.model.Score
+import alphaTab.synth.IAlphaSynth
 
 /**
  * Whether alphaTab should mute each MIDI channel so Playback of [this] Score leaves out every Track
@@ -22,6 +23,11 @@ internal fun Score.channelMutes(isHeard: (track: Int) -> Boolean): Map<Int, Bool
         }
     }
     return (0 until MIDI_CHANNELS).associateWith { heardOn[it] == false }
+}
+
+/** Mutes [player]'s channels so Playback of [score] leaves out the Tracks at the indices in [silencedTracks]. */
+internal fun IAlphaSynth.silence(score: Score, silencedTracks: Set<Int>) {
+    score.channelMutes { it !in silencedTracks }.forEach { (channel, isMuted) -> setChannelMute(channel.toDouble(), isMuted) }
 }
 
 private const val MIDI_CHANNELS = 16
