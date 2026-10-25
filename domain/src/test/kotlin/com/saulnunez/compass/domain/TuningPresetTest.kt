@@ -18,7 +18,7 @@ class TuningPresetTest {
                 TuningPreset.GUITAR_DROP_C,
                 TuningPreset.GUITAR_DADGAD,
             ),
-            TuningPreset.forInstrument(InstrumentKind.GUITAR, stringCount = 6),
+            SupportedInstrument.GUITAR_6.tuningPresets,
         )
     }
 
@@ -26,7 +26,7 @@ class TuningPresetTest {
     fun `4-string bass offers Standard, Drop D and Eb`() {
         assertEquals(
             listOf(TuningPreset.BASS_STANDARD, TuningPreset.BASS_DROP_D, TuningPreset.BASS_E_FLAT),
-            TuningPreset.forInstrument(InstrumentKind.BASS, stringCount = 4),
+            SupportedInstrument.BASS_4.tuningPresets,
         )
     }
 
@@ -34,7 +34,7 @@ class TuningPresetTest {
     fun `5-string bass offers B-E-A-D-G`() {
         assertEquals(
             listOf(TuningPreset.BASS_FIVE_STRING_STANDARD),
-            TuningPreset.forInstrument(InstrumentKind.BASS, stringCount = 5),
+            SupportedInstrument.BASS_5.tuningPresets,
         )
     }
 

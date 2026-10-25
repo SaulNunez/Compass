@@ -6,21 +6,21 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-/** Compass's own document format for a Song: used for the Library, Song files and Backups. */
+/** Compass's own versioned document format for a Song (ADR-0002). */
 object SongFormat {
 
-    fun encode(song: Song): String = json.encodeToString(SongDocument.serializer(), song.toDocument())
+    fun encode(song: Song): String = songJson.encodeToString(SongDocument.serializer(), song.toDocument())
 
     fun decode(text: String): Song {
-        val document = json.parseToJsonElement(text).jsonObject
+        val document = songJson.parseToJsonElement(text).jsonObject
         val formatVersion = document.getValue("formatVersion").jsonPrimitive.int
         // When the format changes, upgrade older versions here before decoding.
         if (formatVersion != CURRENT_FORMAT_VERSION) throw UnsupportedSongFormatException(formatVersion)
-        return json.decodeFromJsonElement(SongDocument.serializer(), document).toSong()
+        return songJson.decodeFromJsonElement(SongDocument.serializer(), document).toSong()
     }
 }
 
 class UnsupportedSongFormatException(val formatVersion: Int) :
     IllegalArgumentException("Song format version $formatVersion is not supported by this version of Compass")
 
-internal val json = Json
+private val songJson = Json

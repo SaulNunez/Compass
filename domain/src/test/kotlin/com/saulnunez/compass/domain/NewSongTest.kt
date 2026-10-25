@@ -10,9 +10,7 @@ class NewSongTest {
         id = SongId("song-1"),
         title = "Waltz",
         artist = "Me",
-        tempo = Tempo(90),
-        timeSignature = TimeSignature(3, 4),
-        keySignature = KeySignature(fifths = -1, isMinor = true),
+        startingMeasure = Measure(TimeSignature(3, 4), KeySignature(fifths = -1, isMinor = true), Tempo(90)),
         trackName = "Bass",
         instrument = TuningPreset.BASS_STANDARD.instrument(),
     )

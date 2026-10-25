@@ -17,6 +17,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 
 class SongStoreTest {
 
@@ -82,6 +83,41 @@ class SongStoreTest {
 
         assertEquals(listOf(SongId("keep")), store.library().entries.map { it.id })
         assertThrows(SongNotFoundException::class.java) { store.load(SongId("riff")) }
+    }
+
+    // The next tests damage files on disk on purpose, so they know the store's file layout.
+    private val indexFile get() = File(folder.root, "library.json")
+
+    @Test
+    fun `a damaged Library index is rebuilt from the saved Songs`() {
+        val store = SongStore(folder.root)
+        store.save(song)
+        store.save(song.copy(id = SongId("other"), title = "Other"))
+        indexFile.writeText("not json")
+
+        assertEquals(listOf("Other", "Riff"), store.library().entries.map { it.title }.sorted())
+    }
+
+    @Test
+    fun `a Song saved without reaching the index is still listed`() {
+        val store = SongStore(folder.root)
+        store.save(song)
+        val indexBeforeSecondSave = indexFile.readText()
+        store.save(song.copy(id = SongId("other"), title = "Other"))
+        indexFile.writeText(indexBeforeSecondSave) // as if the app died between writing the Song and the index
+
+        assertEquals(listOf("Other", "Riff"), store.library().entries.map { it.title }.sorted())
+    }
+
+    @Test
+    fun `a Song document that can't be read is left out instead of breaking the Library`() {
+        val store = SongStore(folder.root)
+        store.save(song)
+        store.save(song.copy(id = SongId("other"), title = "Other"))
+        File(folder.root, "songs/other/song.json").writeText("not json")
+        indexFile.delete()
+
+        assertEquals(listOf("Riff"), store.library().entries.map { it.title })
     }
 
     @Test

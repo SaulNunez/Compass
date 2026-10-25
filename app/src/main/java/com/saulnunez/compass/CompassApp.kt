@@ -1,5 +1,6 @@
 package com.saulnunez.compass
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -78,9 +79,12 @@ fun CompassApp() {
         is Destination.Practice -> {
             BackHandler(onBack = goToLibrary)
             val song by produceState<Song?>(null, destination.songId) {
-                // A Song that can't be read (deleted, or from a newer Compass) sends the user back to the Library.
                 value = withContext(Dispatchers.IO) { runCatching { store.load(destination.songId) }.getOrNull() }
-                if (value == null) goToLibrary()
+                if (value == null) {
+                    // Deleted, damaged, or saved by a newer Compass: say so and go back to the Library.
+                    Toast.makeText(context, R.string.song_cannot_open, Toast.LENGTH_LONG).show()
+                    goToLibrary()
+                }
             }
             song?.let { PracticeScreen(it, onBack = goToLibrary) }
         }

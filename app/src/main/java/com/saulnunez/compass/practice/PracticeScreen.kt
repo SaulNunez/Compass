@@ -13,7 +13,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -25,6 +24,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.saulnunez.compass.R
 import com.saulnunez.compass.domain.Song
 import com.saulnunez.compass.notation.toAlphaTabScore
+import com.saulnunez.compass.ui.BackToLibraryButton
 import com.saulnunez.compass.ui.theme.CompassTheme
 
 /**
@@ -50,7 +50,7 @@ fun PracticeScreen(song: Song, onBack: () -> Unit, modifier: Modifier = Modifier
                         )
                     }
                 },
-                navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.back_to_library)) } },
+                navigationIcon = { BackToLibraryButton(onBack) },
             )
         },
     ) { innerPadding ->

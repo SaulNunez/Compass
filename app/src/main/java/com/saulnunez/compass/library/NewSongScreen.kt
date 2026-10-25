@@ -18,7 +18,6 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,11 +32,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.saulnunez.compass.R
 import com.saulnunez.compass.domain.KeySignature
+import com.saulnunez.compass.domain.Measure
 import com.saulnunez.compass.domain.Song
 import com.saulnunez.compass.domain.SongId
+import com.saulnunez.compass.domain.SupportedInstrument
 import com.saulnunez.compass.domain.Tempo
 import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.domain.newSong
+import com.saulnunez.compass.ui.BackToLibraryButton
 import com.saulnunez.compass.ui.theme.CompassTheme
 import java.util.UUID
 
@@ -52,20 +54,20 @@ fun NewSongScreen(onCreate: (Song) -> Unit, onBack: () -> Unit, modifier: Modifi
     var tempoText by rememberSaveable { mutableStateOf("120") }
     var beatsText by rememberSaveable { mutableStateOf("4") }
     var beatUnit by rememberSaveable { mutableIntStateOf(4) }
-    var keyIndex by rememberSaveable { mutableIntStateOf(allKeySignatures.indexOf(KeySignature.C_MAJOR)) }
-    var instrument by rememberSaveable { mutableStateOf(InstrumentChoice.GUITAR_6) }
+    var keyIndex by rememberSaveable { mutableIntStateOf(KeySignature.ALL.indexOf(KeySignature.C_MAJOR)) }
+    var instrument by rememberSaveable { mutableStateOf(SupportedInstrument.GUITAR_6) }
     var tuning by rememberSaveable { mutableStateOf(instrument.tuningPresets.first()) }
 
     val tempo = tempoText.toIntOrNull()?.takeIf { it in TEMPO_RANGE }
     val beats = beatsText.toIntOrNull()?.takeIf { it in BEATS_RANGE }
-    val trackName = stringResource(instrument.trackName)
+    val trackName = stringResource(instrument.defaultTrackName())
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.new_song_title)) },
-                navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.back_to_library)) } },
+                navigationIcon = { BackToLibraryButton(onBack) },
             )
         },
     ) { innerPadding ->
@@ -104,16 +106,16 @@ fun NewSongScreen(onCreate: (Song) -> Unit, onBack: () -> Unit, modifier: Modifi
             }
             Dropdown(
                 label = stringResource(R.string.field_key),
-                options = allKeySignatures,
-                selected = allKeySignatures[keyIndex],
+                options = KeySignature.ALL,
+                selected = KeySignature.ALL[keyIndex],
                 optionLabel = { keySignatureLabel(it) },
-                onSelect = { keyIndex = allKeySignatures.indexOf(it) },
+                onSelect = { keyIndex = KeySignature.ALL.indexOf(it) },
             )
             Dropdown(
                 label = stringResource(R.string.field_instrument),
-                options = InstrumentChoice.entries,
+                options = SupportedInstrument.entries,
                 selected = instrument,
-                optionLabel = { stringResource(it.label) },
+                optionLabel = { stringResource(it.label()) },
                 onSelect = {
                     instrument = it
                     tuning = it.tuningPresets.first()
@@ -134,9 +136,7 @@ fun NewSongScreen(onCreate: (Song) -> Unit, onBack: () -> Unit, modifier: Modifi
                             id = SongId(UUID.randomUUID().toString()),
                             title = title.trim(),
                             artist = artist.trim(),
-                            tempo = Tempo(tempo!!),
-                            timeSignature = TimeSignature(beats!!, beatUnit),
-                            keySignature = allKeySignatures[keyIndex],
+                            startingMeasure = Measure(TimeSignature(beats!!, beatUnit), KeySignature.ALL[keyIndex], Tempo(tempo!!)),
                             trackName = trackName,
                             instrument = tuning.instrument(),
                         ),

@@ -16,10 +16,15 @@ enum class TuningPreset(val kind: InstrumentKind, openStrings: List<Int>) {
     val tuning: Tuning = Tuning(openStrings.map(::Pitch))
 
     fun instrument(): Instrument = Instrument(kind, tuning)
+}
 
-    companion object {
-        /** The presets for one Instrument, in the order they are offered. */
-        fun forInstrument(kind: InstrumentKind, stringCount: Int): List<TuningPreset> =
-            entries.filter { it.kind == kind && it.tuning.stringCount == stringCount }
-    }
+/** The Instruments Compass offers in v1. */
+enum class SupportedInstrument(val kind: InstrumentKind, val stringCount: Int) {
+    GUITAR_6(InstrumentKind.GUITAR, 6),
+    BASS_4(InstrumentKind.BASS, 4),
+    BASS_5(InstrumentKind.BASS, 5);
+
+    /** Its ready-made Tunings, in the order they are offered. */
+    val tuningPresets: List<TuningPreset>
+        get() = TuningPreset.entries.filter { it.kind == kind && it.tuning.stringCount == stringCount }
 }

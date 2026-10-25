@@ -4,6 +4,7 @@
     <string name="practice_mode_subtitle">%1$s · Practice mode</string>
     <string name="practice_mode">Practice mode</string>
     <string name="back_to_library">Library</string>
+    <string name="song_cannot_open">This Song can’t be opened. It may be damaged or made with a newer version of Compass.</string>
 
     <!-- Library -->
     <string name="library_title">Library</string>

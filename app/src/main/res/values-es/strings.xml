@@ -3,6 +3,7 @@
     <string name="practice_mode_subtitle">%1$s · Modo práctica</string>
     <string name="practice_mode">Modo práctica</string>
     <string name="back_to_library">Biblioteca</string>
+    <string name="song_cannot_open">No se puede abrir esta canción. Puede estar dañada o haberse creado con una versión más reciente de Compass.</string>
 
     <string name="library_title">Biblioteca</string>
     <string name="library_search">Buscar título o artista</string>
