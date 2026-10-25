@@ -5,17 +5,38 @@ import alphaTab.PlayerMode
 import alphaTab.ScrollMode
 import alphaTab.Settings
 import alphaTab.model.Score
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.viewinterop.AndroidView
 import com.saulnunez.compass.domain.ShownViews
 import com.saulnunez.compass.domain.Song
 
 /** What the alphaTab view last drew, so recomposition only re-renders what changed. */
-private data class Drawn(val score: Score, val views: ShownViews, val controls: PlayerControls?)
+private data class Drawn(val score: Score, val views: ShownViews, val controls: PlayerControls?, val theme: NotationTheme)
+
+/**
+ * Everything the alphaTab view needs to match the app's light or dark theme: the notation itself,
+ * the background behind it (alphaTab paints none of its own), and the Playback cursors.
+ */
+private data class NotationTheme(val colors: NotationColors, val background: Int, val barCursor: Int, val beatCursor: Int)
+
+private fun ColorScheme.notationTheme() = NotationTheme(
+    colors = NotationColors(ink = onSurface.toArgb(), lines = outline.toArgb(), accent = primary.toArgb()),
+    background = surface.toArgb(),
+    barCursor = primary.copy(alpha = BAR_CURSOR_ALPHA).toArgb(),
+    beatCursor = primary.copy(alpha = BEAT_CURSOR_ALPHA).toArgb(),
+)
+
+/** How strongly the cursors show over the notation: the Measure faintly, the beat clearly. */
+private const val BAR_CURSOR_ALPHA = 0.18f
+private const val BEAT_CURSOR_ALPHA = 0.75f
 
 /**
  * Draws the first Track of [song] in the [shownViews] with alphaTab, as wrapped lines that scroll
@@ -35,7 +56,7 @@ fun NotationView(
 ) {
     // alphaTab's native view can't run in the Compose preview.
     if (LocalInspectionMode.current) {
-        Box(modifier)
+        Box(modifier.background(MaterialTheme.colorScheme.surface))
         return
     }
 
@@ -56,6 +77,8 @@ fun NotationView(
         }
     }
     val score = remember(song) { song.toAlphaTabScore(settings) }
+    // Follows the system's light or dark theme, which can change while the screen is open.
+    val theme = MaterialTheme.colorScheme.notationTheme()
     AndroidView(
         modifier = modifier,
         factory = { context ->
@@ -69,8 +92,13 @@ fun NotationView(
         update = { view ->
             // update runs on every recomposition; only re-render what changed.
             val drawn = view.tag as Drawn?
-            if (drawn?.views != shownViews) {
+            if (drawn?.views != shownViews || drawn.theme != theme) {
                 settings.show(shownViews)
+                settings.use(theme.colors)
+                view.setBackgroundColor(theme.background)
+                // Read again whenever the settings are re-applied, so the cursors change colour too.
+                view.barCursorFillColor = theme.barCursor
+                view.beatCursorFillColor = theme.beatCursor
                 // Re-applying the settings re-renders whatever Score the view holds.
                 view.settings = settings
             }
@@ -80,7 +108,7 @@ fun NotationView(
                 view.tracks = listOf(score.tracks[0])
             }
             if (controls != null && drawn?.controls != controls) view.api.apply(controls)
-            view.tag = Drawn(score, shownViews, controls)
+            view.tag = Drawn(score, shownViews, controls, theme)
         },
     )
 }
