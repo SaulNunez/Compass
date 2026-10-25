@@ -54,8 +54,8 @@ fun Song.toAlphaTabScore(settings: Settings): Score {
         score.addMasterBar(masterBar)
     }
 
-    tracks.forEach { track ->
-        val alphaTabTrack = track.toAlphaTabTrack()
+    tracks.forEachIndexed { index, track ->
+        val alphaTabTrack = track.toAlphaTabTrack(index)
         score.addTrack(alphaTabTrack)
         alphaTabBarsFor(track).forEach(alphaTabTrack.staves[0]::addBar)
     }
@@ -78,9 +78,17 @@ private fun Song.alphaTabBarsFor(track: Track): List<Bar> = measures.mapIndexed 
     }
 }
 
-private fun Track.toAlphaTabTrack(): AlphaTabTrack {
+private fun Track.toAlphaTabTrack(index: Int): AlphaTabTrack {
     val alphaTabTrack = AlphaTabTrack()
     alphaTabTrack.name = name
+    alphaTabTrack.playbackInfo.apply {
+        // Set before score.finish, which carries the program into the Track's first beat.
+        program = instrument.kind.generalMidiProgram().toDouble()
+        // Every Track needs channels of its own so its Sound, mute/solo and bends don't leak into other
+        // Tracks; alphaTab gives each Track two (the second carries bends).
+        primaryChannel = PLAYBACK_CHANNELS[(index * 2) % PLAYBACK_CHANNELS.size].toDouble()
+        secondaryChannel = PLAYBACK_CHANNELS[(index * 2 + 1) % PLAYBACK_CHANNELS.size].toDouble()
+    }
 
     val staff = Staff()
     // Both list strings from the top tablature line (Compass string 1) downwards.
@@ -164,6 +172,21 @@ private const val WHOLE_STEP = 4.0
 private const val BEND_PEAK = 15.0
 private const val RELEASE_START = 30.0
 private const val BEND_END = 60.0
+
+/**
+ * The General MIDI Sound a Track plays with until Tracks get a choice of Sound (#9):
+ * clean electric guitar and fingered bass.
+ */
+private fun InstrumentKind.generalMidiProgram(): Int = when (this) {
+    InstrumentKind.GUITAR -> 27
+    InstrumentKind.BASS -> 33
+}
+
+/**
+ * MIDI channels for Tracks, two per Track. Channel 9 is percussion, so it is skipped; that leaves
+ * room for 7 Tracks before channels are shared.
+ */
+private val PLAYBACK_CHANNELS = (0..15).filter { it != 9 }.take(14)
 
 /** alphaTab's tempo reference code for "beats are quarter notes". */
 private const val QUARTER_NOTE_REFERENCE = 2.0
