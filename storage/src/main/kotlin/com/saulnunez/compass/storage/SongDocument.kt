@@ -1,5 +1,6 @@
 package com.saulnunez.compass.storage
 
+import com.saulnunez.compass.domain.Chord
 import com.saulnunez.compass.domain.Duration
 import com.saulnunez.compass.domain.Instrument
 import com.saulnunez.compass.domain.InstrumentKind
@@ -9,9 +10,11 @@ import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Pitch
 import com.saulnunez.compass.domain.Rest
+import com.saulnunez.compass.domain.Section
 import com.saulnunez.compass.domain.Song
 import com.saulnunez.compass.domain.SongId
 import com.saulnunez.compass.domain.Sound
+import com.saulnunez.compass.domain.Technique
 import com.saulnunez.compass.domain.Tempo
 import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.domain.Track
@@ -35,7 +38,13 @@ internal data class SongDocument(
     val artist: String,
     val measures: List<MeasureDocument>,
     val tracks: List<TrackDocument>,
+    /** Since format version 3. */
+    val sections: List<SectionDocument>,
 )
+
+/** Since format version 3: a Section's name and its first and last Measure, as 0-based indexes into the Song's Measures. */
+@Serializable
+internal data class SectionDocument(val name: String, val firstMeasure: Int, val lastMeasure: Int)
 
 @Serializable
 internal data class MeasureDocument(
@@ -52,11 +61,11 @@ internal data class TrackDocument(
     val instrument: InstrumentDocument,
     val openStrings: List<Int>,
     val measures: List<List<VoiceElementDocument>>,
-    /** Since format version 3. */
+    /** Since format version 5. */
     val sound: SoundDocument,
 )
 
-/** Since format version 3. */
+/** Since format version 5. */
 @Serializable
 internal enum class SoundDocument {
     @SerialName("clean-electric-guitar") CLEAN_ELECTRIC_GUITAR,
@@ -95,9 +104,37 @@ internal sealed interface VoiceElementDocument {
     val duration: DurationDocument
 }
 
+/** Since format version 4 a Note carries its tie and Techniques. */
 @Serializable
 @SerialName("note")
-internal data class NoteDocument(val string: Int, val fret: Int, override val duration: DurationDocument) : VoiceElementDocument
+internal data class NoteDocument(
+    val string: Int,
+    val fret: Int,
+    override val duration: DurationDocument,
+    val tied: Boolean,
+    val techniques: List<TechniqueDocument>,
+) : VoiceElementDocument
+
+/** Since format version 4: Notes on several strings that share one Duration. */
+@Serializable
+@SerialName("chord")
+internal data class ChordDocument(override val duration: DurationDocument, val notes: List<ChordNoteDocument>) : VoiceElementDocument
+
+@Serializable
+internal data class ChordNoteDocument(val string: Int, val fret: Int, val tied: Boolean, val techniques: List<TechniqueDocument>)
+
+@Serializable
+internal enum class TechniqueDocument {
+    @SerialName("hammer-on-pull-off") HAMMER_ON_PULL_OFF,
+    @SerialName("slide") SLIDE,
+    @SerialName("bend") BEND,
+    @SerialName("bend-and-release") BEND_AND_RELEASE,
+    @SerialName("vibrato") VIBRATO,
+    @SerialName("palm-mute") PALM_MUTE,
+    @SerialName("dead-note") DEAD_NOTE,
+    @SerialName("slap") SLAP,
+    @SerialName("pop") POP,
+}
 
 @Serializable
 @SerialName("rest")
@@ -126,12 +163,43 @@ internal fun Song.toDocument() = SongDocument(
             sound = track.sound.toDocument(),
         )
     },
+    sections = sections.map { SectionDocument(it.name, firstMeasure = it.first, lastMeasure = it.last) },
 )
 
 private fun VoiceElement.toDocument(): VoiceElementDocument = when (this) {
-    is Note -> NoteDocument(string, fret, duration.toDocument())
+    is Note -> NoteDocument(string, fret, duration.toDocument(), isTied, techniques.toDocument())
+    is Chord -> ChordDocument(duration.toDocument(), notes.map { ChordNoteDocument(it.string, it.fret, it.isTied, it.techniques.toDocument()) })
     is Rest -> RestDocument(duration.toDocument())
 }
+
+// Stored in Technique order, so the same Note always saves the same way.
+private fun Set<Technique>.toDocument() = sorted().map {
+    when (it) {
+        Technique.HAMMER_ON_PULL_OFF -> TechniqueDocument.HAMMER_ON_PULL_OFF
+        Technique.SLIDE -> TechniqueDocument.SLIDE
+        Technique.BEND -> TechniqueDocument.BEND
+        Technique.BEND_AND_RELEASE -> TechniqueDocument.BEND_AND_RELEASE
+        Technique.VIBRATO -> TechniqueDocument.VIBRATO
+        Technique.PALM_MUTE -> TechniqueDocument.PALM_MUTE
+        Technique.DEAD_NOTE -> TechniqueDocument.DEAD_NOTE
+        Technique.SLAP -> TechniqueDocument.SLAP
+        Technique.POP -> TechniqueDocument.POP
+    }
+}
+
+private fun List<TechniqueDocument>.toTechniques() = map {
+    when (it) {
+        TechniqueDocument.HAMMER_ON_PULL_OFF -> Technique.HAMMER_ON_PULL_OFF
+        TechniqueDocument.SLIDE -> Technique.SLIDE
+        TechniqueDocument.BEND -> Technique.BEND
+        TechniqueDocument.BEND_AND_RELEASE -> Technique.BEND_AND_RELEASE
+        TechniqueDocument.VIBRATO -> Technique.VIBRATO
+        TechniqueDocument.PALM_MUTE -> Technique.PALM_MUTE
+        TechniqueDocument.DEAD_NOTE -> Technique.DEAD_NOTE
+        TechniqueDocument.SLAP -> Technique.SLAP
+        TechniqueDocument.POP -> Technique.POP
+    }
+}.toSet()
 
 private fun InstrumentKind.toDocument() = when (this) {
     InstrumentKind.GUITAR -> InstrumentDocument.GUITAR
@@ -180,10 +248,14 @@ internal fun SongDocument.toSong() = Song(
             sound = track.sound.toSound(),
         )
     },
+    sections = sections.map { Section(it.name, first = it.firstMeasure, last = it.lastMeasure) },
 )
 
 private fun VoiceElementDocument.toVoiceElement(): VoiceElement = when (this) {
-    is NoteDocument -> Note(string, fret, duration.toDuration())
+    is NoteDocument -> Note(string, fret, duration.toDuration(), tied, techniques.toTechniques())
+    is ChordDocument -> duration.toDuration().let { duration ->
+        Chord(notes.map { Note(it.string, it.fret, duration, it.tied, it.techniques.toTechniques()) })
+    }
     is RestDocument -> Rest(duration.toDuration())
 }
 
@@ -215,4 +287,4 @@ private fun NoteValueDocument.toNoteValue() = when (this) {
     NoteValueDocument.THIRTY_SECOND -> NoteValue.THIRTY_SECOND
 }
 
-internal const val CURRENT_FORMAT_VERSION = 3
+internal const val CURRENT_FORMAT_VERSION = 5

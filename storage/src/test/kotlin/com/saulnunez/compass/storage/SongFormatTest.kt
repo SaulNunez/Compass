@@ -1,5 +1,6 @@
 package com.saulnunez.compass.storage
 
+import com.saulnunez.compass.domain.Chord
 import com.saulnunez.compass.domain.Duration
 import com.saulnunez.compass.domain.InstrumentKind
 import com.saulnunez.compass.domain.KeySignature
@@ -7,10 +8,12 @@ import com.saulnunez.compass.domain.Measure
 import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Rest
+import com.saulnunez.compass.domain.Section
 import com.saulnunez.compass.domain.SongId
 import com.saulnunez.compass.domain.Sound
 import com.saulnunez.compass.domain.Track
 import com.saulnunez.compass.domain.Tempo
+import com.saulnunez.compass.domain.Technique
 import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.domain.TuningPreset
 import com.saulnunez.compass.domain.Voice
@@ -55,6 +58,39 @@ class SongFormatTest {
     }
 
     @Test
+    fun `Sections survive a save and load`() {
+        val withSections = song.copy(sections = listOf(Section("Intro", 0, 0), Section("Verse", 1, 3)))
+
+        assertEquals(withSections, SongFormat.decode(SongFormat.encode(withSections)))
+    }
+
+    @Test
+    fun `a version 2 document is upgraded on load, with no Sections`() {
+        val versionTwo = """
+            {
+              "formatVersion": 2,
+              "id": "riff",
+              "title": "Riff",
+              "artist": "Band",
+              "measures": [{ "beats": 4, "beatUnit": 4, "keyFifths": 0, "keyIsMinor": false, "tempo": 100 }],
+              "tracks": [{
+                "name": "Guitar",
+                "instrument": "guitar",
+                "openStrings": [64, 59, 55, 50, 45, 40],
+                "measures": [[
+                  { "type": "note", "string": 1, "fret": 5, "duration": { "value": "quarter", "dotted": true, "triplet": false } }
+                ]]
+              }]
+            }
+        """.trimIndent()
+
+        val song = SongFormat.decode(versionTwo)
+
+        assertEquals(emptyList<Section>(), song.sections)
+        assertEquals(listOf(Note(1, 5, Duration(NoteValue.QUARTER, isDotted = true))), song.tracks.single().voice.measures.single())
+    }
+
+    @Test
     fun `each Track's Sound survives a save and load`() {
         val band = song.copy(
             tracks = song.tracks.map { it.copy(sound = Sound.NYLON_ACOUSTIC_GUITAR) } +
@@ -65,10 +101,10 @@ class SongFormatTest {
     }
 
     @Test
-    fun `a version 2 document is upgraded on load, its Tracks getting the default Sounds`() {
-        val versionTwo = """
+    fun `a version 4 document is upgraded on load, its Tracks getting the default Sounds`() {
+        val versionFour = """
             {
-              "formatVersion": 2,
+              "formatVersion": 4,
               "id": "duo",
               "title": "Duo",
               "artist": "",
@@ -78,17 +114,19 @@ class SongFormatTest {
                   "name": "Guitar",
                   "instrument": "guitar",
                   "openStrings": [64, 59, 55, 50, 45, 40],
-                  "measures": [[{ "type": "note", "string": 1, "fret": 5, "duration": { "value": "quarter", "dotted": true, "triplet": false } }]]
+                  "measures": [[{ "type": "note", "string": 1, "fret": 5, "duration": { "value": "quarter", "dotted": true, "triplet": false }, "tied": false, "techniques": [] }]]
                 },
                 { "name": "Bass", "instrument": "bass", "openStrings": [43, 38, 33, 28], "measures": [[]] }
-              ]
+              ],
+              "sections": [{ "name": "Intro", "firstMeasure": 0, "lastMeasure": 0 }]
             }
         """.trimIndent()
 
-        val song = SongFormat.decode(versionTwo)
+        val song = SongFormat.decode(versionFour)
 
         assertEquals(listOf(Sound.CLEAN_ELECTRIC_GUITAR, Sound.FINGERED_BASS), song.tracks.map { it.sound })
         assertEquals(listOf(Note(1, 5, Duration(NoteValue.QUARTER, isDotted = true))), song.tracks[0].voice.measures.single())
+        assertEquals(listOf(Section("Intro", 0, 0)), song.sections)
     }
 
     @Test
@@ -122,6 +160,95 @@ class SongFormatTest {
             track.voice.measures.single(),
         )
         assertEquals(Measure(TimeSignature(4, 4), KeySignature(1, isMinor = true), Tempo(120)), song.measures.single())
+    }
+
+    @Test
+    fun `Chords, ties and every Technique survive a save and load`() {
+        val quarter = Duration.QUARTER
+        val written = song.copy(
+            tracks = song.tracks.map { track ->
+                track.copy(
+                    voice = Voice(
+                        track.voice.measures.mapIndexed { index, elements ->
+                            when (index) {
+                                0 -> listOf(
+                                    Chord(listOf(Note(1, 0, quarter), Note(2, 1, quarter, techniques = setOf(Technique.VIBRATO)))),
+                                    Chord(listOf(Note(1, 0, quarter, isTied = true), Note(3, 2, quarter))),
+                                    Note(3, 2, Duration.HALF, isTied = true, techniques = setOf(Technique.HAMMER_ON_PULL_OFF, Technique.PALM_MUTE)),
+                                )
+                                1 -> Technique.entries.map { Note(4, 5, Duration.SIXTEENTH, techniques = setOf(it)) }
+                                else -> elements
+                            }
+                        },
+                    ),
+                )
+            },
+        )
+
+        assertEquals(written, SongFormat.decode(SongFormat.encode(written)))
+    }
+
+    @Test
+    fun `a version 3 document is upgraded on load, keeping its Sections`() {
+        val versionThree = """
+            {
+              "formatVersion": 3,
+              "id": "riff",
+              "title": "Riff",
+              "artist": "Band",
+              "measures": [
+                { "beats": 4, "beatUnit": 4, "keyFifths": 0, "keyIsMinor": false, "tempo": 100 },
+                { "beats": 4, "beatUnit": 4, "keyFifths": 0, "keyIsMinor": false, "tempo": 100 }
+              ],
+              "tracks": [{
+                "name": "Guitar",
+                "instrument": "guitar",
+                "openStrings": [64, 59, 55, 50, 45, 40],
+                "measures": [
+                  [{ "type": "note", "string": 2, "fret": 7, "duration": { "value": "half", "dotted": false, "triplet": false } }],
+                  [{ "type": "rest", "duration": { "value": "whole", "dotted": false, "triplet": false } }]
+                ]
+              }],
+              "sections": [{ "name": "Intro", "firstMeasure": 0, "lastMeasure": 0 }, { "name": "Verse", "firstMeasure": 1, "lastMeasure": 1 }]
+            }
+        """.trimIndent()
+
+        val song = SongFormat.decode(versionThree)
+
+        assertEquals(listOf(Section("Intro", 0, 0), Section("Verse", 1, 1)), song.sections)
+        assertEquals(
+            listOf(listOf(Note(2, 7, Duration.HALF)), listOf(Rest(Duration.WHOLE))),
+            song.tracks.single().voice.measures,
+        )
+    }
+
+    @Test
+    fun `a version 2 document with Notes and Rests is upgraded on load`() {
+        val versionTwo = """
+            {
+              "formatVersion": 2,
+              "id": "riff",
+              "title": "Riff",
+              "artist": "Band",
+              "measures": [{ "beats": 4, "beatUnit": 4, "keyFifths": 0, "keyIsMinor": false, "tempo": 100 }],
+              "tracks": [{
+                "name": "Guitar",
+                "instrument": "guitar",
+                "openStrings": [64, 59, 55, 50, 45, 40],
+                "measures": [[
+                  { "type": "note", "string": 6, "fret": 3, "duration": { "value": "quarter", "dotted": true, "triplet": false } },
+                  { "type": "rest", "duration": { "value": "eighth", "dotted": false, "triplet": false } }
+                ]]
+              }]
+            }
+        """.trimIndent()
+
+        val song = SongFormat.decode(versionTwo)
+
+        assertEquals(
+            listOf(Note(6, 3, Duration(NoteValue.QUARTER, isDotted = true)), Rest(Duration.EIGHTH)),
+            song.tracks.single().voice.measures.single(),
+        )
     }
 
     @Test

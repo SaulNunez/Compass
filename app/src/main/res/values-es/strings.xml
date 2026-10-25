@@ -12,6 +12,7 @@
 
     <!-- Modo práctica: reproducción -->
     <string name="playback_play">Reproducir</string>
+    <string name="playback_play_from_cursor">Reproducir desde el cursor</string>
     <string name="playback_stop">Detener</string>
     <string name="playback_click">Metrónomo</string>
     <string name="playback_count_in">Cuenta previa</string>
@@ -37,6 +38,17 @@
     <string name="triplet">Tresillo</string>
     <string name="rest">Silencio</string>
     <string name="rest_short">S</string>
+    <string name="techniques">Técnicas de la nota del cursor</string>
+    <string name="tie">Ligadura</string>
+    <string name="technique_hammer_on_pull_off">Hammer-on/pull-off</string>
+    <string name="technique_slide">Slide</string>
+    <string name="technique_bend">Bend</string>
+    <string name="technique_bend_and_release">Bend y regreso</string>
+    <string name="technique_vibrato">Vibrato</string>
+    <string name="technique_palm_mute">Palm mute</string>
+    <string name="technique_dead_note">Nota muerta</string>
+    <string name="technique_slap">Slap</string>
+    <string name="technique_pop">Pop</string>
     <string name="cursor_previous_measure">Compás anterior</string>
     <string name="cursor_next_measure">Compás siguiente</string>
     <string name="cursor_previous_beat">Tiempo anterior</string>
@@ -190,4 +202,18 @@
     <string name="sound_picked_bass">Bajo con púa</string>
     <string name="sound_slap_bass">Bajo slap</string>
     <string name="sound_fretless_bass">Bajo sin trastes</string>
+    <string name="new_section">Nueva sección</string>
+    <string name="edit_section">Editar sección</string>
+    <string name="copy_section">Copiar sección</string>
+    <string name="paste_measures">Pegar compases</string>
+    <string name="paste_measures_description">Pegar los compases copiados antes del compás %1$d, en todas las pistas</string>
+    <string name="no_section">Sin sección</string>
+    <string name="section_at_cursor">Sección: %1$s</string>
+    <string name="new_section_title">Nueva sección</string>
+    <string name="edit_section_title">Sección %1$s</string>
+    <string name="field_section_name">Nombre</string>
+    <string name="field_first_measure">Primer compás</string>
+    <string name="field_last_measure">Último compás</string>
+    <string name="section_overlaps">Estos compases pertenecen a otra sección.</string>
+    <string name="remove_section">Eliminar sección</string>
 </resources>

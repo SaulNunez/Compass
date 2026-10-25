@@ -25,6 +25,8 @@ class EditSession private constructor(
     /** What to go back to on undo, most recent last. */
     private val undoStack: List<Snapshot> = emptyList(),
     private val redoStack: List<Snapshot> = emptyList(),
+    /** The Measures last copied with [copySection], ready to paste. Not part of the Song, so undo leaves it. */
+    private val copied: CopiedMeasures? = null,
 ) {
 
     /** The Song, the Track being edited and where the cursor was, before or after an edit. */
@@ -50,6 +52,7 @@ class EditSession private constructor(
     /**
      * Writes [digit] as the fret of a Note on the cursor's string. A digit typed straight after
      * another one makes a two-digit fret with it (1 then 2 is fret 12), up to [HIGHEST_FRET].
+     * Notes already on other strings at the cursor stay, making a Chord.
      */
     fun typeDigit(digit: Int): EditSession {
         require(digit in 0..9) { "Not a digit: $digit" }
@@ -57,7 +60,7 @@ class EditSession private constructor(
         val fret = twoDigitFret ?: digit
         // The second digit of a two-digit fret amends the first, so both are undone together.
         val note = Note(cursor.string, fret, duration)
-        val written = apply(WriteElement(track, cursor.measure, cursor.beat, note), isNewEdit = twoDigitFret == null)
+        val written = apply(WriteNote(track, cursor.measure, cursor.beat, note), isNewEdit = twoDigitFret == null)
         val canTakeAnotherDigit = twoDigitFret == null && fret != 0 && fret * 10 <= HIGHEST_FRET
         return written.copy(pendingDigit = if (canTakeAnotherDigit) fret else null)
     }
@@ -74,12 +77,45 @@ class EditSession private constructor(
     /** Makes the chosen Duration a triplet or not, like [chooseNoteValue]. */
     fun toggleTriplet(): EditSession = chooseDuration(duration.copy(isTriplet = !duration.isTriplet))
 
+    /** The Note on the cursor's string at the cursor's beat, if any. */
+    val noteAtCursor: Note? get() = elementAtCursor?.noteOn(cursor.string)
+
+    /** Whether the Note at the cursor is tied, or could be: there is a Note just before it on its string. */
+    val canTie: Boolean
+        get() = noteAtCursor != null &&
+            song.tracks[track].voice.elementBefore(cursor.measure, cursor.beat)?.noteOn(cursor.string) != null
+
+    /** Ties the Note at the cursor to the Note just before it on its string, or unties it. */
+    fun toggleTie(): EditSession {
+        val note = noteAtCursor ?: return this
+        if (!canTie) return this
+        return apply(SetTie(track, cursor.measure, cursor.beat, cursor.string, isTied = !note.isTied))
+    }
+
+    /** The Techniques the Track's Instrument offers, in toolbar order. */
+    val availableTechniques: List<Technique>
+        get() = Technique.offeredOn(song.tracks[track].instrument.kind)
+
+    /** Adds [technique] to the Note at the cursor (replacing one it cannot be played with), or takes it off. */
+    fun toggleTechnique(technique: Technique): EditSession {
+        val note = noteAtCursor ?: return this
+        if (technique !in availableTechniques) return this
+        val isAdded = technique !in note.techniques
+        return apply(SetTechnique(track, cursor.measure, cursor.beat, cursor.string, technique, isAdded))
+    }
+
     /** Writes a Rest at the cursor, replacing the Note there but keeping its Duration. */
     fun writeRest(): EditSession = apply(WriteElement(track, cursor.measure, cursor.beat, Rest(duration)))
 
-    /** Removes the Note or Rest under the cursor; the cursor stays on the beat that moves up. */
+    /**
+     * Removes the Note or Rest under the cursor; the cursor stays on the beat that moves up.
+     * In a Chord only the Note on the cursor's string goes, unless the cursor's string has none.
+     */
     fun delete(): EditSession {
-        if (elementAtCursor == null) return this
+        val element = elementAtCursor ?: return this
+        if (element is Chord && element.noteOn(cursor.string) != null) {
+            return apply(DeleteNote(track, cursor.measure, cursor.beat, cursor.string))
+        }
         return apply(DeleteElement(track, cursor.measure, cursor.beat)).let { it.moveTo(it.cursor) }
     }
 
@@ -124,7 +160,8 @@ class EditSession private constructor(
 
     /** Adds a Track with every Measure of the Song, and edits it from now on. */
     fun addTrack(name: String, instrument: Instrument, sound: Sound): EditSession =
-        apply(AddTrack(name, instrument, sound)) { it + null }.let { it.editTrack(it.song.tracks.lastIndex) }
+        // Copied Measures hold one part per Track, so they no longer fit once the Tracks change.
+        apply(AddTrack(name, instrument, sound)) { it + null }.copy(copied = null).let { it.editTrack(it.song.tracks.lastIndex) }
 
     /** Edits the Track at index [track] from now on, keeping the cursor's Measure and, where it can, its string. */
     fun editTrack(track: Int): EditSession {
@@ -147,7 +184,9 @@ class EditSession private constructor(
     /** Removes the Track being edited and edits the one before it (or the new first one). */
     fun removeTrack(): EditSession {
         if (!canRemoveTrack) return this
-        return apply(RemoveTrack(track)) { origins -> origins.filterIndexed { index, _ -> index != track } }.let { it.editTrack((track - 1).coerceAtLeast(0)) }
+        return apply(RemoveTrack(track)) { origins -> origins.filterIndexed { index, _ -> index != track } }
+            .copy(copied = null)
+            .let { it.editTrack((track - 1).coerceAtLeast(0)) }
     }
 
     fun renameTrack(name: String): EditSession = apply(RenameTrack(track, name))
@@ -159,6 +198,67 @@ class EditSession private constructor(
 
     /** Renames, retunes and changes the Sound of the Track being edited, as one edit. */
     fun changeTrack(name: String, tuning: Tuning, sound: Sound): EditSession = apply(ChangeTrack(track, name, tuning, sound))
+    /** The index of the Section holding the cursor's Measure, or null when it is in none. */
+    private val sectionIndexAtCursor: Int?
+        get() = song.sections.indexOfFirst { cursor.measure in it }.takeIf { it >= 0 }
+
+    /** The Section holding the cursor's Measure, or null when it is in none. */
+    val sectionAtCursor: Section? get() = sectionIndexAtCursor?.let { song.sections[it] }
+
+    /** Whether Measures [first] to [last] (0-based) can be a new Section: no other Section holds any of them. */
+    fun canAddSection(first: Int, last: Int): Boolean = song.canPlaceSection(first, last)
+
+    /** Whether the Section under the cursor can span Measures [first] to [last] (0-based) instead. */
+    fun canResizeSection(first: Int, last: Int): Boolean =
+        sectionIndexAtCursor?.let { song.canPlaceSection(first, last, ignoring = it) } ?: false
+
+    /** Names Measures [first] to [last] (0-based) as a new Section called [name], unless they belong to another Section. */
+    fun addSection(name: String, first: Int, last: Int): EditSession {
+        if (name.isBlank() || !canAddSection(first, last)) return this
+        return apply(AddSection(Section(name.trim(), first, last)))
+    }
+
+    /** Renames the Section under the cursor. */
+    fun renameSection(name: String): EditSession {
+        val section = sectionIndexAtCursor ?: return this
+        if (name.isBlank()) return this
+        return apply(RenameSection(section, name.trim()))
+    }
+
+    /** Makes the Section under the cursor span Measures [first] to [last] (0-based), unless another Section holds any of them. */
+    fun resizeSection(first: Int, last: Int): EditSession {
+        val section = sectionIndexAtCursor ?: return this
+        if (!canResizeSection(first, last)) return this
+        return apply(ResizeSection(section, first, last))
+    }
+
+    /** Renames the Section under the cursor and makes it span Measures [first] to [last] (0-based), as one edit. */
+    fun changeSection(name: String, first: Int, last: Int): EditSession {
+        val section = sectionIndexAtCursor ?: return this
+        if (name.isBlank() || !canResizeSection(first, last)) return this
+        return apply(ChangeSection(section, name.trim(), first, last))
+    }
+
+    /** Removes the Section under the cursor, keeping its Measures. */
+    fun removeSection(): EditSession {
+        val section = sectionIndexAtCursor ?: return this
+        return apply(RemoveSection(section))
+    }
+
+    /** Copies the Measures of the Section under the cursor, in every Track, to paste with [pasteMeasures]. */
+    fun copySection(): EditSession {
+        val section = sectionAtCursor ?: return this
+        return copy(copied = song.copyMeasures(section.first, section.last))
+    }
+
+    /** Whether there are copied Measures to paste. */
+    val canPaste: Boolean get() = copied != null && copied.tracks.size == song.tracks.size
+
+    /** Pastes the copied Measures before the cursor's Measure, in every Track; the cursor moves to the first of them. */
+    fun pasteMeasures(): EditSession {
+        val measures = copied?.takeIf { canPaste } ?: return this
+        return apply(PasteMeasures(cursor.measure, measures)).moveTo(cursor.copy(beat = 0))
+    }
 
     private fun chooseDuration(chosen: Duration): EditSession =
         if (elementAtCursor != null) {
@@ -193,7 +293,7 @@ class EditSession private constructor(
     fun moveToStringBelow(): EditSession =
         moveTo(cursor.copy(string = (cursor.string + 1).coerceAtMost(song.tracks[track].instrument.stringCount)))
 
-    /** The Note or Rest under the cursor, or null on the free beat after the last one. */
+    /** The Note, Chord or Rest under the cursor, or null on the free beat after the last one. */
     val elementAtCursor: VoiceElement?
         get() = elementsOf(cursor.measure).getOrNull(cursor.beat)
 
@@ -234,7 +334,8 @@ class EditSession private constructor(
         pendingDigit: Int? = null,
         undoStack: List<Snapshot> = this.undoStack,
         redoStack: List<Snapshot> = this.redoStack,
-    ) = EditSession(song, cursor, duration, track, trackOrigins, pendingDigit, undoStack, redoStack)
+        copied: CopiedMeasures? = this.copied,
+    ) = EditSession(song, cursor, duration, track, trackOrigins, pendingDigit, undoStack, redoStack, copied)
 
     companion object {
         /** Starts editing the Track at index [track] of [song], with the cursor on its first beat and top string. */

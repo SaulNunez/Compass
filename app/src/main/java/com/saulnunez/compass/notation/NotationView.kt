@@ -14,12 +14,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.saulnunez.compass.domain.ShownViews
 import com.saulnunez.compass.domain.Song
 
-/** Draws the Track at index [track] of [song] as Tablature with alphaTab; redraws whenever either changes. */
-@Composable
-fun TablatureView(song: Song, track: Int, modifier: Modifier = Modifier) {
-    NotationView(song, ShownViews.TABLATURE, modifier, track = track)
-}
-
 /** What the alphaTab view last drew, so recomposition only re-renders what changed. */
 private data class Drawn(val score: Score, val track: Int, val views: ShownViews, val controls: PlayerControls?)
 

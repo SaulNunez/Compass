@@ -23,6 +23,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,15 +62,22 @@ import com.saulnunez.compass.domain.MeasureFill
 import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Rest
+import com.saulnunez.compass.domain.Technique
+import com.saulnunez.compass.domain.noteOn
 import com.saulnunez.compass.domain.measureFill
-import com.saulnunez.compass.notation.TablatureView
+import com.saulnunez.compass.domain.ShownViews
+import com.saulnunez.compass.notation.NotationPlayer
+import com.saulnunez.compass.notation.NotationView
+import com.saulnunez.compass.notation.rememberNotationPlayer
 import com.saulnunez.compass.practice.demoSong
 import com.saulnunez.compass.ui.theme.CompassTheme
 
 /**
- * Edit mode: adds, removes and changes a Song's Tracks and writes Notes and Rests into the
- * Tablature of the Track being edited, through [session]. Every action hands the next session to [onSessionChange]; [onDone] switches back
- * to Practice mode.
+ * Edit mode: adds, removes and changes a Song's Tracks and writes Notes, Chords and Rests, ties
+ * and Techniques into the Tablature of the Track being edited, through [session]. Every action
+ * hands the next session to [onSessionChange]; [onDone] switches back to Practice mode. Playback
+ * here only plays the Song from the cursor and stops; the tempo percentage, click and count-in
+ * are Practice mode's.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,6 +88,8 @@ fun EditScreen(
     modifier: Modifier = Modifier,
 ) {
     val song = session.song
+    // Tapping the Tablature doesn't start Playback here; only the Play action does, from the cursor.
+    val player = rememberNotationPlayer(playsOnTap = false)
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -92,6 +102,7 @@ fun EditScreen(
                 },
                 navigationIcon = { TextButton(onClick = onDone) { Text(stringResource(R.string.leave_edit_mode)) } },
                 actions = {
+                    PlayFromCursorButton(player, session)
                     TextButton(onClick = { onSessionChange(session.undo()) }, enabled = session.canUndo) {
                         Text(stringResource(R.string.undo))
                     }
@@ -103,13 +114,16 @@ fun EditScreen(
         },
     ) { innerPadding ->
         Column(Modifier.padding(innerPadding).fillMaxSize()) {
-            TablatureView(song, session.track, Modifier.weight(1f).fillMaxWidth())
+            // Rebuilt from the edited Song on every change, so Playback always plays what was just written.
+            NotationView(song, ShownViews.TABLATURE, Modifier.weight(1f).fillMaxWidth(), player = player, track = session.track)
             HorizontalDivider()
             TrackTools(session, onSessionChange)
             MeasureStrip(session, onSessionChange)
             MeasureTools(session, onSessionChange)
+            SectionTools(session, onSessionChange)
             MeasureEditor(session)
             DurationBar(session, onSessionChange)
+            TechniqueBar(session, onSessionChange)
             CursorPad(session, onSessionChange)
             NumberPad(onDigit = { onSessionChange(session.typeDigit(it)) })
         }
@@ -167,6 +181,19 @@ private fun TrackTools(session: EditSession, onSessionChange: (EditSession) -> U
     }
 }
 
+/** Plays the Song from the cursor, or stops Playback and goes back to where it started. */
+@Composable
+private fun PlayFromCursorButton(player: NotationPlayer, session: EditSession) {
+    val playDescription = stringResource(R.string.playback_play_from_cursor)
+    TextButton(
+        onClick = { if (player.isPlaying) player.stop() else player.playFrom(session.cursor, session.track) },
+        enabled = player.isReady,
+        modifier = Modifier.semantics { if (!player.isPlaying) contentDescription = playDescription },
+    ) {
+        Text(stringResource(if (player.isPlaying) R.string.playback_stop else R.string.playback_play))
+    }
+}
+
 /** Every Measure by number, the cursor's highlighted; incomplete or overfull ones flagged. */
 @Composable
 private fun MeasureStrip(session: EditSession, onSessionChange: (EditSession) -> Unit) {
@@ -181,12 +208,14 @@ private fun MeasureStrip(session: EditSession, onSessionChange: (EditSession) ->
             val fill = session.song.measureFill(track = session.track, measure = index)
             val flagged = fill == MeasureFill.INCOMPLETE || fill == MeasureFill.OVERFULL
             val description = measureDescription(index + 1, fill)
+            // A Section's name leads its first Measure.
+            val sectionName = session.song.sections.firstOrNull { it.first == index }?.let { "${it.name} · " } ?: ""
             FilterChip(
                 selected = index == session.cursor.measure,
                 onClick = { onSessionChange(session.moveToMeasure(index)) },
                 label = {
                     Text(
-                        if (flagged) "${index + 1} !" else "${index + 1}",
+                        sectionName + if (flagged) "${index + 1} !" else "${index + 1}",
                         color = if (flagged) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                     )
                 },
@@ -299,6 +328,141 @@ private fun MeasureSettingsDialog(measureNumber: Int, current: Measure, onApply:
     )
 }
 
+/**
+ * Names, renames, resizes and removes the Section under the cursor, and copies its Measures to
+ * paste before another Measure, in every Track.
+ */
+@Composable
+private fun SectionTools(session: EditSession, onSessionChange: (EditSession) -> Unit) {
+    var addingSection by rememberSaveable { mutableStateOf(false) }
+    var editingSection by rememberSaveable { mutableStateOf(false) }
+    val section = session.sectionAtCursor
+    val measureNumber = session.cursor.measure + 1
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
+    ) {
+        Text(
+            if (section != null) stringResource(R.string.section_at_cursor, section.name) else stringResource(R.string.no_section),
+            style = MaterialTheme.typography.labelMedium,
+        )
+        if (section == null) {
+            OutlinedButton(onClick = { addingSection = true }) { Text(stringResource(R.string.new_section)) }
+        } else {
+            OutlinedButton(onClick = { editingSection = true }) { Text(stringResource(R.string.edit_section)) }
+            OutlinedButton(onClick = { onSessionChange(session.copySection()) }) { Text(stringResource(R.string.copy_section)) }
+        }
+        val pasteDescription = stringResource(R.string.paste_measures_description, measureNumber)
+        OutlinedButton(
+            onClick = { onSessionChange(session.pasteMeasures()) },
+            enabled = session.canPaste,
+            modifier = Modifier.semantics { contentDescription = pasteDescription },
+        ) { Text(stringResource(R.string.paste_measures)) }
+    }
+    if (addingSection) {
+        SectionDialog(
+            title = stringResource(R.string.new_section_title),
+            initialName = "",
+            initialFirst = measureNumber,
+            initialLast = measureNumber,
+            measureCount = session.song.measures.size,
+            canPlace = session::canAddSection,
+            onApply = { name, first, last ->
+                addingSection = false
+                onSessionChange(session.addSection(name, first, last))
+            },
+            onDismiss = { addingSection = false },
+        )
+    }
+    if (editingSection && section != null) {
+        SectionDialog(
+            title = stringResource(R.string.edit_section_title, section.name),
+            initialName = section.name,
+            initialFirst = section.first + 1,
+            initialLast = section.last + 1,
+            measureCount = session.song.measures.size,
+            canPlace = session::canResizeSection,
+            onApply = { name, first, last ->
+                editingSection = false
+                onSessionChange(session.changeSection(name, first, last))
+            },
+            onDismiss = { editingSection = false },
+            onRemove = {
+                editingSection = false
+                onSessionChange(session.removeSection())
+            },
+        )
+    }
+}
+
+/**
+ * Asks for a Section's name and its first and last Measure (numbered from 1 here; [onApply] and
+ * [canPlace] take them 0-based). [onRemove], when given, offers to remove the Section.
+ */
+@Composable
+private fun SectionDialog(
+    title: String,
+    initialName: String,
+    initialFirst: Int,
+    initialLast: Int,
+    measureCount: Int,
+    canPlace: (first: Int, last: Int) -> Boolean,
+    onApply: (name: String, first: Int, last: Int) -> Unit,
+    onDismiss: () -> Unit,
+    onRemove: (() -> Unit)? = null,
+) {
+    var name by rememberSaveable { mutableStateOf(initialName) }
+    var firstText by rememberSaveable { mutableStateOf(initialFirst.toString()) }
+    var lastText by rememberSaveable { mutableStateOf(initialLast.toString()) }
+
+    val first = firstText.toIntOrNull()?.takeIf { it in 1..measureCount }
+    val last = lastText.toIntOrNull()?.takeIf { it in 1..measureCount && (first == null || it >= first) }
+    val overlaps = first != null && last != null && !canPlace(first - 1, last - 1)
+    val canApply = name.isNotBlank() && first != null && last != null && !overlaps
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.field_section_name)) },
+                    isError = name.isBlank(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NumberField(R.string.field_first_measure, firstText, isError = first == null || overlaps, Modifier.weight(1f)) {
+                        firstText = it
+                    }
+                    NumberField(R.string.field_last_measure, lastText, isError = last == null || overlaps, Modifier.weight(1f)) {
+                        lastText = it
+                    }
+                }
+                if (overlaps) {
+                    Text(
+                        stringResource(R.string.section_overlaps),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (onRemove != null) {
+                    TextButton(onClick = onRemove) { Text(stringResource(R.string.remove_section)) }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = canApply, onClick = { onApply(name, first!! - 1, last!! - 1) }) {
+                Text(stringResource(R.string.apply))
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
 /** The cursor's Measure as a grid of strings by beats, the cursor's cell highlighted. */
 @Composable
 private fun MeasureEditor(session: EditSession) {
@@ -322,8 +486,9 @@ private fun MeasureEditor(session: EditSession) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     for (string in 1..track.instrument.stringCount) {
                         val isCursor = session.cursor.beat == beat && session.cursor.string == string
+                        val note = element?.noteOn(string)
                         val text = when {
-                            element is Note && element.string == string -> element.fret.toString()
+                            note != null -> noteSymbol(note)
                             element is Rest && string == (track.instrument.stringCount + 1) / 2 -> stringResource(R.string.rest_short)
                             else -> ""
                         }
@@ -384,6 +549,35 @@ private fun DurationBar(session: EditSession, onSessionChange: (EditSession) -> 
             OutlinedButton(onClick = { onSessionChange(session.delete()) }, enabled = session.elementAtCursor != null) {
                 Text(stringResource(R.string.delete))
             }
+        }
+    }
+}
+
+/** Ties the Note at the cursor and adds or removes its Techniques; disabled where there is no Note. */
+@Composable
+private fun TechniqueBar(session: EditSession, onSessionChange: (EditSession) -> Unit) {
+    val note = session.noteAtCursor
+    val description = stringResource(R.string.techniques)
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 8.dp)
+            .semantics { contentDescription = description },
+    ) {
+        FilterChip(
+            selected = note?.isTied == true,
+            onClick = { onSessionChange(session.toggleTie()) },
+            label = { Text(stringResource(R.string.tie)) },
+            enabled = session.canTie,
+        )
+        session.availableTechniques.forEach { technique ->
+            FilterChip(
+                selected = note != null && technique in note.techniques,
+                onClick = { onSessionChange(session.toggleTechnique(technique)) },
+                label = { Text(stringResource(technique.label())) },
+                enabled = note != null,
+            )
         }
     }
 }
@@ -449,6 +643,25 @@ private fun NoteValue.symbol(): String = when (this) {
 /** A short written form of a Duration, e.g. "1/4." for a dotted quarter or "1/8³" for a triplet eighth. */
 private fun durationSymbol(duration: Duration): String =
     duration.value.symbol() + (if (duration.isDotted) "." else "") + (if (duration.isTriplet) "³" else "")
+
+/** A Note's cell in the grid: its fret, in brackets when tied, or an x for a dead note. */
+private fun noteSymbol(note: Note): String = when {
+    Technique.DEAD_NOTE in note.techniques -> "x"
+    note.isTied -> "(${note.fret})"
+    else -> note.fret.toString()
+}
+
+private fun Technique.label(): Int = when (this) {
+    Technique.HAMMER_ON_PULL_OFF -> R.string.technique_hammer_on_pull_off
+    Technique.SLIDE -> R.string.technique_slide
+    Technique.BEND -> R.string.technique_bend
+    Technique.BEND_AND_RELEASE -> R.string.technique_bend_and_release
+    Technique.VIBRATO -> R.string.technique_vibrato
+    Technique.PALM_MUTE -> R.string.technique_palm_mute
+    Technique.DEAD_NOTE -> R.string.technique_dead_note
+    Technique.SLAP -> R.string.technique_slap
+    Technique.POP -> R.string.technique_pop
+}
 
 private fun NoteValue.label(): Int = when (this) {
     NoteValue.WHOLE -> R.string.note_value_whole
