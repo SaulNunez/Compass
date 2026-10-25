@@ -2,6 +2,7 @@ package com.saulnunez.compass.storage
 
 import com.saulnunez.compass.domain.Library
 import com.saulnunez.compass.domain.LibraryEntry
+import com.saulnunez.compass.domain.PracticeSettings
 import com.saulnunez.compass.domain.Song
 import com.saulnunez.compass.domain.SongId
 import kotlinx.serialization.Serializable
@@ -40,6 +41,29 @@ class SongStore(
         val file = File(songFolder(id), SONG_DOCUMENT)
         if (!file.exists()) throw SongNotFoundException(id)
         return SongFormat.decode(file.readText())
+    }
+
+    /** The Song's saved Practice settings, or the defaults if it has none (or they can't be read). */
+    fun practiceSettings(id: SongId): PracticeSettings {
+        val file = File(songFolder(id), PRACTICE_SETTINGS)
+        return if (file.exists()) PracticeSettingsFormat.decodeOrDefault(file.readText()) else PracticeSettings()
+    }
+
+    /**
+     * Saves the Song's Practice settings in its folder, beside its document, which stays untouched.
+     * @throws SongNotFoundException if the Song is not in the Library (e.g. it was just deleted).
+     */
+    fun savePracticeSettings(id: SongId, settings: PracticeSettings) {
+        val folder = songFolder(id)
+        if (!File(folder, SONG_DOCUMENT).exists()) throw SongNotFoundException(id)
+        File(folder, PRACTICE_SETTINGS).writeAtomically(PracticeSettingsFormat.encode(settings))
+    }
+
+    /** Records in the Library that the Song was practiced [at]; does nothing if the Song is gone. */
+    fun markPracticed(id: SongId, at: Instant) {
+        val entries = indexEntries()
+        if (entries.none { it.id == id.value }) return
+        writeIndex(entries.map { if (it.id == id.value) it.copy(lastPracticedEpochMillis = at.toEpochMilli()) else it })
     }
 
     private fun loadOrNull(id: SongId): Song? = runCatching { load(id) }.getOrNull()
@@ -185,4 +209,5 @@ private class NonClosingOutputStream(output: OutputStream) : FilterOutputStream(
 
 private const val SONGS_FOLDER = "songs"
 private const val SONG_DOCUMENT = "song.json"
+private const val PRACTICE_SETTINGS = "practice-settings.json"
 private const val INDEX_FILE = "library.json"
