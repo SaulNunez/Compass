@@ -113,10 +113,10 @@
     <string name="restore_failed">Couldn’t read the Backup.</string>
 
     <!-- Song file -->
-    <string name="song_share">Share</string>
+    <string name="send_song_file">Send Song file</string>
     <!-- Title of the share sheet; %1$s is the Song title. -->
-    <string name="song_share_chooser">Send “%1$s”</string>
-    <string name="song_share_failed">Couldn’t prepare the Song file.</string>
+    <string name="send_song_file_chooser">Send “%1$s”</string>
+    <string name="send_song_file_failed">Couldn’t prepare the Song file.</string>
     <!-- Used as the Song file name when the Song’s title can’t be used as one. -->
     <string name="song_file_untitled">Song</string>
     <string name="song_file_import">Import</string>

@@ -22,8 +22,11 @@ private data class PracticeSettingsDocument(
     val countIn: Boolean,
     /** Added in version 2; version 1 has no Loop. */
     val loop: LoopDocument? = null,
-    /** Added without a new format version: settings saved before it read the first Track. */
-    val readTrack: Int = 0,
+    /**
+     * Recorded from version 4. Versions 1-3 may or may not carry it (it was first written without a
+     * version step); when they don't, the first Track is read.
+     */
+    val readTrack: Int? = null,
     /** Added in version 3, as Track indices; earlier versions have every Track sounding. */
     val mutedTracks: List<Int> = emptyList(),
     val soloedTracks: List<Int> = emptyList(),
@@ -71,6 +74,7 @@ internal object PracticeSettingsFormat {
     fun decodeOrDefault(text: String): PracticeSettings = runCatching {
         val document = json.decodeFromString(PracticeSettingsDocument.serializer(), text)
         check(document.formatVersion in 1..PRACTICE_SETTINGS_FORMAT_VERSION)
+        check(document.formatVersion < READ_TRACK_VERSION || document.readTrack != null)
         PracticeSettings(
             tempoPercentage = TempoPercentage(document.tempoPercentage.coerceIn(TempoPercentage.RANGE)),
             shownViews = when (document.shownViews) {
@@ -81,7 +85,7 @@ internal object PracticeSettingsFormat {
             click = document.click,
             countIn = document.countIn,
             loop = document.loop?.toLoop(),
-            readTrack = document.readTrack.coerceAtLeast(0),
+            readTrack = (document.readTrack ?: 0).coerceAtLeast(0),
             mutedTracks = document.mutedTracks.filter { it >= 0 }.toSet(),
             soloedTracks = document.soloedTracks.filter { it >= 0 }.toSet(),
         )
@@ -97,7 +101,12 @@ private fun LoopDocument.toLoop(): Loop? = runCatching {
     }
 }.getOrNull()
 
-/** Version 2 adds the Loop; version 3 the muted and soloed Tracks. */
-private const val PRACTICE_SETTINGS_FORMAT_VERSION = 3
+/**
+ * Version 2 adds the Loop; version 3 the muted and soloed Tracks; version 4 always records the Track
+ * being read.
+ */
+private const val PRACTICE_SETTINGS_FORMAT_VERSION = 4
+
+private const val READ_TRACK_VERSION = 4
 
 private val json = Json { encodeDefaults = true }

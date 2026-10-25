@@ -9,6 +9,7 @@ import com.saulnunez.compass.domain.KeySignature
 import com.saulnunez.compass.domain.Pitch
 import com.saulnunez.compass.domain.Sound
 import com.saulnunez.compass.domain.SupportedInstrument
+import com.saulnunez.compass.domain.Technique
 import com.saulnunez.compass.domain.TuningPreset
 
 @StringRes
@@ -56,6 +57,19 @@ fun Sound.label(): Int = when (this) {
     Sound.PICKED_BASS -> R.string.sound_picked_bass
     Sound.SLAP_BASS -> R.string.sound_slap_bass
     Sound.FRETLESS_BASS -> R.string.sound_fretless_bass
+}
+
+@StringRes
+fun Technique.label(): Int = when (this) {
+    Technique.HAMMER_ON_PULL_OFF -> R.string.technique_hammer_on_pull_off
+    Technique.SLIDE -> R.string.technique_slide
+    Technique.BEND -> R.string.technique_bend
+    Technique.BEND_AND_RELEASE -> R.string.technique_bend_and_release
+    Technique.VIBRATO -> R.string.technique_vibrato
+    Technique.PALM_MUTE -> R.string.technique_palm_mute
+    Technique.DEAD_NOTE -> R.string.technique_dead_note
+    Technique.SLAP -> R.string.technique_slap
+    Technique.POP -> R.string.technique_pop
 }
 
 /** A pitch's note name and octave, e.g. E2 for the low string of a standard-tuned guitar. */

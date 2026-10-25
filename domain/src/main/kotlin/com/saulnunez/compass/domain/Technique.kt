@@ -6,6 +6,11 @@ enum class Technique(
     private val group: Group? = null,
     /** The Instrument kinds it is offered on. */
     private val kinds: Set<InstrumentKind> = InstrumentKind.entries.toSet(),
+    /**
+     * Played by the whole Chord at once, so every Note of a Chord has it or none does (alphaTab,
+     * too, marks it on the beat rather than on each Note).
+     */
+    val isPerChord: Boolean = false,
 ) {
     /** Into the next Note on the same string without picking it: a hammer-on going up, a pull-off going down. */
     HAMMER_ON_PULL_OFF(Group.LEGATO),
@@ -23,8 +28,8 @@ enum class Technique(
 
     /** Muted by the fretting hand: a percussive click with no pitch. */
     DEAD_NOTE,
-    SLAP(Group.THUMB_OR_FINGER, setOf(InstrumentKind.BASS)),
-    POP(Group.THUMB_OR_FINGER, setOf(InstrumentKind.BASS)),
+    SLAP(Group.THUMB_OR_FINGER, setOf(InstrumentKind.BASS), isPerChord = true),
+    POP(Group.THUMB_OR_FINGER, setOf(InstrumentKind.BASS), isPerChord = true),
     ;
 
     private enum class Group { LEGATO, BEND, THUMB_OR_FINGER }

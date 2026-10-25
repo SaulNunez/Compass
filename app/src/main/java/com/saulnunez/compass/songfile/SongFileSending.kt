@@ -23,12 +23,12 @@ val SONG_FILE_OPEN_MIME_TYPES = arrayOf(SONG_FILE_MIME_TYPE, "text/plain", "appl
  * Writes the Song with [id] as a Song file and opens the share sheet to send it.
  * @return false if the Song file could not be written.
  */
-suspend fun shareSongFile(context: Context, store: SongStore, id: SongId): Boolean {
+suspend fun sendSongFile(context: Context, store: SongStore, id: SongId): Boolean {
     val (songFile, title) = withContext(Dispatchers.IO) {
         runCatching {
             val title = store.load(id).title
-            // Only the Song file being shared is kept, so earlier ones don't pile up in the cache.
-            val folder = File(context.cacheDir, SHARED_FOLDER).apply {
+            // Only the Song file being sent is kept, so earlier ones don't pile up in the cache.
+            val folder = File(context.cacheDir, SENDING_FOLDER).apply {
                 deleteRecursively()
                 mkdirs()
             }
@@ -47,7 +47,7 @@ suspend fun shareSongFile(context: Context, store: SongStore, id: SongId): Boole
         clipData = ClipData.newRawUri(title, uri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
-    context.startActivity(Intent.createChooser(send, context.getString(R.string.song_share_chooser, title)))
+    context.startActivity(Intent.createChooser(send, context.getString(R.string.send_song_file_chooser, title)))
     return true
 }
 
@@ -55,4 +55,4 @@ suspend fun shareSongFile(context: Context, store: SongStore, id: SongId): Boole
 private const val AUTHORITY_SUFFIX = ".songfiles"
 
 /** Must match the cache-path in res/xml/song_file_paths.xml. */
-private const val SHARED_FOLDER = "song-files"
+private const val SENDING_FOLDER = "song-files"

@@ -72,7 +72,7 @@ class NotationPlayer internal constructor(private val playsOnTap: Boolean) {
     private fun applyMutes() {
         val player = api?.player ?: return
         val score = api?.score ?: return
-        score.channelMutes { it !in silencedTracks }.forEach { (channel, isMuted) -> player.setChannelMute(channel.toDouble(), isMuted) }
+        player.silence(score, silencedTracks)
     }
 
     fun play() {
@@ -102,7 +102,7 @@ class NotationPlayer internal constructor(private val playsOnTap: Boolean) {
      */
     fun playFrom(measure: Int) {
         val api = api ?: return
-        val start = loop?.takeUnless { measure in it }?.first ?: measure
+        val start = playbackStart(loop, measure)
         val masterBar = api.score?.masterBars?.takeIf { start < it.length.toInt() }?.get(start) ?: return
         val tickCache = api.tickCache ?: return
         startTick = tickCache.getMasterBarStart(masterBar)
@@ -138,6 +138,9 @@ class NotationPlayer internal constructor(private val playsOnTap: Boolean) {
         isPlaying = false
     }
 }
+
+/** The Measure Playback started at [measure] really starts at: the [loop]'s first when outside it. */
+internal fun playbackStart(loop: IntRange?, measure: Int): Int = loop?.takeUnless { measure in it }?.first ?: measure
 
 /** A [NotationPlayer]; with [playsOnTap], tapping a Measure in the view starts Playback there. */
 @Composable

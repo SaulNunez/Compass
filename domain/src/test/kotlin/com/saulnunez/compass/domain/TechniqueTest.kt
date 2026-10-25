@@ -2,6 +2,7 @@ package com.saulnunez.compass.domain
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class TechniqueTest {
@@ -76,6 +77,38 @@ class TechniqueTest {
             listOf(Chord(listOf(Note(1, 5, quarter), Note(2, 5, quarter, techniques = setOf(Technique.PALM_MUTE))))),
             session.measure(0),
         )
+    }
+
+    @Test
+    fun `slap and pop go on and come off every Note of a Chord together`() {
+        val chord = bass.typeDigit(5).moveToStringBelow().typeDigit(3)
+        fun slapped(vararg techniques: Technique) =
+            listOf(Chord(listOf(Note(1, 5, quarter, techniques = setOf(*techniques)), Note(2, 3, quarter, techniques = setOf(*techniques)))))
+
+        val slap = chord.toggleTechnique(Technique.SLAP)
+        assertEquals(slapped(Technique.SLAP), slap.measure(0))
+
+        val pop = slap.moveToStringAbove().toggleTechnique(Technique.POP)
+        assertEquals(slapped(Technique.POP), pop.measure(0))
+
+        assertEquals(slapped(), pop.toggleTechnique(Technique.POP).measure(0))
+    }
+
+    @Test
+    fun `a Note written into a slapped Chord is slapped with it`() {
+        val session = bass.typeDigit(5).toggleTechnique(Technique.SLAP).moveToStringBelow().typeDigit(3)
+
+        assertEquals(
+            listOf(Chord(listOf(Note(1, 5, quarter, techniques = setOf(Technique.SLAP)), Note(2, 3, quarter, techniques = setOf(Technique.SLAP))))),
+            session.measure(0),
+        )
+    }
+
+    @Test
+    fun `a Chord can't have slap or pop on only some of its Notes`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            Chord(listOf(Note(1, 5, quarter, techniques = setOf(Technique.SLAP)), Note(2, 3, quarter)))
+        }
     }
 
     @Test

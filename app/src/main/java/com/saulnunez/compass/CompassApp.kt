@@ -28,7 +28,7 @@ import com.saulnunez.compass.library.LibraryScreen
 import com.saulnunez.compass.library.NewSongScreen
 import com.saulnunez.compass.practice.PracticeScreen
 import com.saulnunez.compass.songfile.SONG_FILE_OPEN_MIME_TYPES
-import com.saulnunez.compass.songfile.shareSongFile
+import com.saulnunez.compass.songfile.sendSongFile
 import com.saulnunez.compass.storage.AddResult
 import com.saulnunez.compass.storage.NotABackupException
 import com.saulnunez.compass.storage.NotASongFileException
@@ -73,22 +73,14 @@ fun CompassApp() {
     val backUp = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(BACKUP_MIME_TYPE)) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
-            val written = storeLock.withLock {
-                withContext(Dispatchers.IO) {
-                    runCatching { context.contentResolver.openOutputStream(uri)!!.use(store::backUp) }
-                }
-            }
+            val written = storeLock.withStore { context.contentResolver.openOutputStream(uri)!!.use(store::backUp) }
             showMessage(resources.getString(if (written.isSuccess) R.string.backup_done else R.string.backup_failed))
         }
     }
     val restore = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
-            val report = storeLock.withLock {
-                withContext(Dispatchers.IO) {
-                    runCatching { store.restore(context.contentResolver.openInputStream(uri)!!) }
-                }
-            }
+            val report = storeLock.withStore { store.restore(context.contentResolver.openInputStream(uri)!!) }
             reloads++
             showMessage(
                 report.fold(
@@ -104,13 +96,9 @@ fun CompassApp() {
     val importSongFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
-            val imported = storeLock.withLock {
-                withContext(Dispatchers.IO) {
-                    runCatching {
-                        val result = store.importSongFile(context.contentResolver.openInputStream(uri)!!)
-                        result to store.load(result.id).title
-                    }
-                }
+            val imported = storeLock.withStore {
+                val result = store.importSongFile(context.contentResolver.openInputStream(uri)!!)
+                result to store.load(result.id).title
             }
             reloads++
             showMessage(
@@ -129,11 +117,11 @@ fun CompassApp() {
             )
         }
     }
-    val shareSong: (SongId) -> Unit = { id ->
+    val sendSong: (SongId) -> Unit = { id ->
         scope.launch {
             // Waits for any edit still being saved, so the Song file has the Song as it is now.
-            val shared = storeLock.withLock { shareSongFile(context, store, id) }
-            if (!shared) showMessage(resources.getString(R.string.song_share_failed))
+            val sent = storeLock.withLock { sendSongFile(context, store, id) }
+            if (!sent) showMessage(resources.getString(R.string.send_song_file_failed))
         }
     }
 
@@ -149,7 +137,7 @@ fun CompassApp() {
                 onBackUp = { backUp.launch(resources.getString(R.string.backup_file_name, LocalDate.now().toString())) },
                 onRestore = { restore.launch(BACKUP_OPEN_MIME_TYPES) },
                 onImportSong = { importSongFile.launch(SONG_FILE_OPEN_MIME_TYPES) },
-                onShareSong = shareSong,
+                onSendSongFile = sendSong,
                 onDeleteSong = { id ->
                     scope.launch {
                         storeLock.withLock { withContext(Dispatchers.IO) { store.delete(id) } }
@@ -177,10 +165,7 @@ fun CompassApp() {
             BackHandler(onBack = goToLibrary)
             val id = destination.songId
             val song = loadSong(store, storeLock, id, onMissing = goToLibrary)
-            val loadedSettings by produceState<PracticeSettings?>(null, id) {
-                value = storeLock.withLock { withContext(Dispatchers.IO) { store.practiceSettings(id) } }
-            }
-            val initialSettings = loadedSettings
+            val initialSettings = loadPracticeSettings(store, storeLock, id)
             if (song != null && initialSettings != null) {
                 var settings by remember(id, initialSettings) { mutableStateOf(initialSettings) }
                 PracticeScreen(
@@ -189,18 +174,14 @@ fun CompassApp() {
                     onSettingsChange = { next ->
                         settings = next
                         // Saved beside the Song, never into it; in the app's scope so leaving can't cancel it.
-                        scope.launch {
-                            storeLock.withLock { withContext(Dispatchers.IO) { runCatching { store.savePracticeSettings(id, next) } } }
-                        }
+                        scope.launch { storeLock.withStore { store.savePracticeSettings(id, next) } }
                     },
                     onPlaybackStarted = {
-                        scope.launch {
-                            storeLock.withLock { withContext(Dispatchers.IO) { runCatching { store.markPracticed(id, Instant.now()) } } }
-                        }
+                        scope.launch { storeLock.withStore { store.markPracticed(id, Instant.now()) } }
                     },
                     onBack = goToLibrary,
                     onEdit = { route = id.toEditRoute() },
-                    onShare = { shareSong(id) },
+                    onSendSongFile = { sendSong(id) },
                 )
             }
         }
@@ -211,15 +192,13 @@ fun CompassApp() {
             val id = destination.songId
             val song = loadSong(store, storeLock, id, onMissing = goToLibrary)
             // The Practice settings as they were when editing started, so they can follow the edits.
-            val settingsBefore by produceState<PracticeSettings?>(null, id) {
-                value = storeLock.withLock { withContext(Dispatchers.IO) { store.practiceSettings(id) } }
-            }
-            val initialSettings = settingsBefore
+            val initialSettings = loadPracticeSettings(store, storeLock, id)
             if (song != null && initialSettings != null) {
                 var session by remember(song) { mutableStateOf(EditSession.start(song)) }
                 var savedSettings by remember(song, initialSettings) { mutableStateOf(initialSettings) }
                 EditScreen(
                     session = session,
+                    shownViews = initialSettings.shownViews,
                     onSessionChange = { next ->
                         val edited = next.song != session.song
                         session = next
@@ -230,9 +209,7 @@ fun CompassApp() {
                         if (edited) {
                             scope.launch {
                                 save(context, store, storeLock, next.song)
-                                if (settingsChanged) {
-                                    storeLock.withLock { withContext(Dispatchers.IO) { runCatching { store.savePracticeSettings(id, reconciled) } } }
-                                }
+                                if (settingsChanged) storeLock.withStore { store.savePracticeSettings(id, reconciled) }
                             }
                         }
                     },
@@ -248,7 +225,7 @@ fun CompassApp() {
 private fun loadSong(store: SongStore, storeLock: Mutex, id: SongId, onMissing: () -> Unit): Song? {
     val context = LocalContext.current
     val song by produceState<Song?>(null, id) {
-        value = storeLock.withLock { withContext(Dispatchers.IO) { runCatching { store.load(id) }.getOrNull() } }
+        value = storeLock.withStore { store.load(id) }.getOrNull()
         if (value == null) {
             // Deleted, damaged, or saved by a newer Compass: say so and go back to the Library.
             Toast.makeText(context, R.string.song_cannot_open, Toast.LENGTH_LONG).show()
@@ -258,10 +235,23 @@ private fun loadSong(store: SongStore, storeLock: Mutex, id: SongId, onMissing: 
     return song
 }
 
+/** The Song's Practice settings (the defaults if they can't be read). Null while loading. */
+@Composable
+private fun loadPracticeSettings(store: SongStore, storeLock: Mutex, id: SongId): PracticeSettings? {
+    val settings by produceState<PracticeSettings?>(null, id) {
+        value = storeLock.withStore { store.practiceSettings(id) }.getOrDefault(PracticeSettings())
+    }
+    return settings
+}
+
 private suspend fun save(context: Context, store: SongStore, storeLock: Mutex, song: Song) {
-    val saved = storeLock.withLock { withContext(Dispatchers.IO) { runCatching { store.save(song) }.isSuccess } }
+    val saved = storeLock.withStore { store.save(song) }.isSuccess
     if (!saved) Toast.makeText(context, R.string.song_cannot_save, Toast.LENGTH_LONG).show()
 }
+
+/** Runs [block] on the store once it is this caller's turn ([this] is the store's lock), off the main thread. */
+private suspend fun <T> Mutex.withStore(block: () -> T): Result<T> =
+    withLock { withContext(Dispatchers.IO) { runCatching(block) } }
 
 private fun RestoreReport.summary(resources: Resources): String {
     val restored = resources.getString(R.string.restore_done, added, addedAsCopies, alreadyPresent)

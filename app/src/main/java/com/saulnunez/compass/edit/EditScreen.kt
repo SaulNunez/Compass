@@ -58,6 +58,7 @@ import com.saulnunez.compass.domain.Measure
 import com.saulnunez.compass.domain.Tempo
 import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.library.keySignatureLabel
+import com.saulnunez.compass.library.label
 import com.saulnunez.compass.ui.AdaptivePanes
 import com.saulnunez.compass.ui.BEATS_RANGE
 import com.saulnunez.compass.ui.BEAT_UNITS
@@ -85,12 +86,14 @@ import com.saulnunez.compass.ui.theme.CompassTheme
  * and Techniques into the Tablature of the Track being edited, through [session]. Every action
  * hands the next session to [onSessionChange]; [onDone] switches back to Practice mode. Playback
  * here only plays the Song from the cursor and stops; the tempo percentage, click and count-in
- * are Practice mode's.
+ * are Practice mode's. The Song is shown in Practice mode's [shownViews] (always with the
+ * Tablature being edited), so Standard notation follows every edit.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditScreen(
     session: EditSession,
+    shownViews: ShownViews,
     onSessionChange: (EditSession) -> Unit,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
@@ -128,7 +131,7 @@ fun EditScreen(
             panel = { sideBySide -> EditTools(session, onSessionChange, sideBySide) },
         ) {
             // Rebuilt from the edited Song on every change, so Playback always plays what was just written.
-            NotationView(song, ShownViews.TABLATURE, Modifier.fillMaxSize(), player = player, track = session.track)
+            NotationView(song, shownViews.inEditMode(), Modifier.fillMaxSize(), player = player, track = session.track)
         }
     }
 }
@@ -701,18 +704,6 @@ private fun noteSymbol(note: Note): String = when {
     else -> note.fret.toString()
 }
 
-private fun Technique.label(): Int = when (this) {
-    Technique.HAMMER_ON_PULL_OFF -> R.string.technique_hammer_on_pull_off
-    Technique.SLIDE -> R.string.technique_slide
-    Technique.BEND -> R.string.technique_bend
-    Technique.BEND_AND_RELEASE -> R.string.technique_bend_and_release
-    Technique.VIBRATO -> R.string.technique_vibrato
-    Technique.PALM_MUTE -> R.string.technique_palm_mute
-    Technique.DEAD_NOTE -> R.string.technique_dead_note
-    Technique.SLAP -> R.string.technique_slap
-    Technique.POP -> R.string.technique_pop
-}
-
 private fun NoteValue.label(): Int = when (this) {
     NoteValue.WHOLE -> R.string.note_value_whole
     NoteValue.HALF -> R.string.note_value_half
@@ -726,6 +717,6 @@ private fun NoteValue.label(): Int = when (this) {
 @Composable
 private fun EditScreenPreview() {
     CompassTheme {
-        EditScreen(EditSession.start(demoSong).moveToNextBeat(), onSessionChange = {}, onDone = {})
+        EditScreen(EditSession.start(demoSong).moveToNextBeat(), ShownViews.BOTH, onSessionChange = {}, onDone = {})
     }
 }

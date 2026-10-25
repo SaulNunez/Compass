@@ -123,7 +123,7 @@ private fun Track.alphaTabVoiceFor(measureIndex: Int): Voice {
         }
         // A Chord is one beat with a Note per string; a Rest is a beat with none.
         element.notes.forEach { beat.addNote(it.toAlphaTab(instrument.stringCount)) }
-        // alphaTab marks slap and pop on the beat rather than on each Note.
+        // alphaTab marks slap and pop on the beat; every Note of a Chord has the same (Technique.isPerChord).
         beat.slap = element.notes.any { Technique.SLAP in it.techniques }
         beat.pop = element.notes.any { Technique.POP in it.techniques }
         alphaTabVoice.addBeat(beat)

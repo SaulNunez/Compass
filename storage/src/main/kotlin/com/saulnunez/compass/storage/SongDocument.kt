@@ -7,6 +7,8 @@ import com.saulnunez.compass.domain.InstrumentKind
 import com.saulnunez.compass.domain.KeySignature
 import com.saulnunez.compass.domain.Measure
 import com.saulnunez.compass.domain.Note
+import com.saulnunez.compass.domain.perChordTechniques
+import com.saulnunez.compass.domain.withPerChordTechniques
 import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Pitch
 import com.saulnunez.compass.domain.Rest
@@ -254,7 +256,11 @@ internal fun SongDocument.toSong() = Song(
 private fun VoiceElementDocument.toVoiceElement(): VoiceElement = when (this) {
     is NoteDocument -> Note(string, fret, duration.toDuration(), tied, techniques.toTechniques())
     is ChordDocument -> duration.toDuration().let { duration ->
-        Chord(notes.map { Note(it.string, it.fret, duration, it.tied, it.techniques.toTechniques()) })
+        val chordNotes = notes.map { Note(it.string, it.fret, duration, it.tied, it.techniques.toTechniques()) }
+        // Earlier Compass let slap or pop go on some Notes of a Chord only; alphaTab showed and
+        // played it on the whole Chord, so that is how it opens now.
+        val perChord = chordNotes.map { it.perChordTechniques }.firstOrNull { it.isNotEmpty() }.orEmpty()
+        Chord(chordNotes.map { it.withPerChordTechniques(perChord) })
     }
     is RestDocument -> Rest(duration.toDuration())
 }

@@ -200,4 +200,40 @@ class PracticeSettingsStoreTest {
 
         assertEquals(practiced, store.practiceSettings(song.id))
     }
+
+    @Test
+    fun `Practice settings from version 4 remember the Track being read`() {
+        val store = SongStore(folder.root).apply { save(song) }
+        practiceSettingsFile().writeText(
+            """{"formatVersion":4,"tempoPercentage":65,"shownViews":"both","click":true,"countIn":true,"loop":null,""" +
+                """"readTrack":1,"mutedTracks":[],"soloedTracks":[]}""",
+        )
+
+        assertEquals(practiced, store.practiceSettings(song.id))
+    }
+
+    @Test
+    fun `Practice settings from version 3 upgrade, reading the first Track when none was recorded`() {
+        val store = SongStore(folder.root).apply { save(song) }
+        practiceSettingsFile().writeText(
+            """{"formatVersion":3,"tempoPercentage":65,"shownViews":"both","click":true,"countIn":true,"loop":null,""" +
+                """"mutedTracks":[1],"soloedTracks":[]}""",
+        )
+
+        assertEquals(practiced.copy(readTrack = 0, mutedTracks = setOf(1)), store.practiceSettings(song.id))
+    }
+
+    @Test
+    fun `Practice settings from version 4 without the Track being read are damaged and fall back to the defaults`() {
+        val store = SongStore(folder.root).apply { save(song) }
+        practiceSettingsFile().writeText(
+            """{"formatVersion":4,"tempoPercentage":65,"shownViews":"both","click":true,"countIn":true,"loop":null,""" +
+                """"mutedTracks":[],"soloedTracks":[]}""",
+        )
+
+        assertEquals(PracticeSettings(), store.practiceSettings(song.id))
+    }
+
+    private fun practiceSettingsFile(): File =
+        folder.root.walk().single { it.isDirectory && it.name == "riff" }.resolve("practice-settings.json")
 }

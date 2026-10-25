@@ -80,7 +80,7 @@ class EditSession private constructor(
         val fret = twoDigitFret ?: digit
         // The second digit of a two-digit fret amends the first, so both are undone together.
         val note = Note(cursor.string, fret, duration)
-        val written = apply(WriteNote(track, cursor.measure, cursor.beat, note), isNewEdit = twoDigitFret == null)
+        val written = apply(WriteNote(track, cursor, note), isNewEdit = twoDigitFret == null)
         val canTakeAnotherDigit = twoDigitFret == null && fret != 0 && fret * 10 <= HIGHEST_FRET
         return written.copy(pendingDigit = if (canTakeAnotherDigit) fret else null)
     }
@@ -109,7 +109,7 @@ class EditSession private constructor(
     fun toggleTie(): EditSession {
         val note = noteAtCursor ?: return this
         if (!canTie) return this
-        return apply(SetTie(track, cursor.measure, cursor.beat, cursor.string, isTied = !note.isTied))
+        return apply(SetTie(track, cursor, isTied = !note.isTied))
     }
 
     /** The Techniques the Track's Instrument offers, in toolbar order. */
@@ -121,7 +121,7 @@ class EditSession private constructor(
         val note = noteAtCursor ?: return this
         if (technique !in availableTechniques) return this
         val isAdded = technique !in note.techniques
-        return apply(SetTechnique(track, cursor.measure, cursor.beat, cursor.string, technique, isAdded))
+        return apply(SetTechnique(track, cursor, technique, isAdded))
     }
 
     /** Writes a Rest at the cursor, replacing the Note there but keeping its Duration. */
@@ -134,7 +134,7 @@ class EditSession private constructor(
     fun delete(): EditSession {
         val element = elementAtCursor ?: return this
         if (element is Chord && element.noteOn(cursor.string) != null) {
-            return apply(DeleteNote(track, cursor.measure, cursor.beat, cursor.string))
+            return apply(DeleteNote(track, cursor))
         }
         return apply(DeleteElement(track, cursor.measure, cursor.beat)).let { it.moveTo(it.cursor) }
     }

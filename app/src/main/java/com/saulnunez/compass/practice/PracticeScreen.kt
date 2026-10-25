@@ -74,7 +74,7 @@ fun PracticeScreen(
     onSettingsChange: (PracticeSettings) -> Unit,
     onBack: () -> Unit,
     onEdit: () -> Unit,
-    onShare: () -> Unit,
+    onSendSongFile: () -> Unit,
     modifier: Modifier = Modifier,
     onPlaybackStarted: () -> Unit = {},
 ) {
@@ -112,7 +112,7 @@ fun PracticeScreen(
                 },
                 navigationIcon = { BackToLibraryButton(onBack) },
                 actions = {
-                    TextButton(onClick = onShare) { Text(stringResource(R.string.song_share)) }
+                    TextButton(onClick = onSendSongFile) { Text(stringResource(R.string.send_song_file)) }
                     TextButton(onClick = onEdit) { Text(stringResource(R.string.enter_edit_mode)) }
                 },
             )
@@ -273,6 +273,6 @@ private fun ShownViews.label(): Int = when (this) {
 @Composable
 private fun PracticeScreenPreview() {
     CompassTheme {
-        PracticeScreen(demoSong, PracticeSettings(), onSettingsChange = {}, onBack = {}, onEdit = {}, onShare = {})
+        PracticeScreen(demoSong, PracticeSettings(), onSettingsChange = {}, onBack = {}, onEdit = {}, onSendSongFile = {})
     }
 }

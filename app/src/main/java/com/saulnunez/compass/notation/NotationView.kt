@@ -70,16 +70,14 @@ fun NotationView(
     val playable = player != null
     val settings = remember(playable) {
         Settings().apply {
+            // Even with a player, alphaTab's player starts only once the Song is first drawn (see below).
+            this.player.playerMode = PlayerMode.Disabled
             if (playable) {
-                // The synthesizer loads alphaTab's built-in soundfont by itself once the player is ready.
-                this.player.playerMode = PlayerMode.EnabledSynthesizer
                 this.player.enableCursor = true
                 this.player.scrollMode = ScrollMode.Continuous
                 // Compass handles taps itself (start at the tapped Measure); alphaTab's own handling
                 // would also select ranges and clear Loops.
                 this.player.enableUserInteraction = false
-            } else {
-                this.player.playerMode = PlayerMode.Disabled
             }
         }
     }
@@ -90,9 +88,10 @@ fun NotationView(
         modifier = modifier,
         factory = { context ->
             AlphaTabView(context, null).apply {
-                // Listen before the settings create the player, so its first ready event isn't missed.
+                // Listen before the player is created, so its first ready event isn't missed.
                 player?.attach(api)
-                this.settings = settings
+                if (player != null) startPlayerAfterFirstRender(settings)
+                // The settings are applied once, by the first update, with the views and colours.
             }
         },
         onRelease = { player?.detach() },
@@ -118,4 +117,21 @@ fun NotationView(
             view.tag = Drawn(score, track, shownViews, controls, theme)
         },
     )
+}
+
+/**
+ * Creates alphaTab's player (its synthesizer and audio output, which load the soundfont) once the
+ * Song has first been drawn. Created with the view, its start-up (reading and copying the 1.3 MB
+ * soundfont on the main thread, opening the audio output, and parsing the soundfont on a worker
+ * thread) competed with the first render and held up the Song appearing.
+ */
+private fun AlphaTabView.startPlayerAfterFirstRender(settings: Settings) {
+    var unsubscribe: () -> Unit = {}
+    unsubscribe = api.postRenderFinished.on {
+        if (api.score == null) return@on
+        unsubscribe()
+        settings.player.playerMode = PlayerMode.EnabledSynthesizer
+        // Creates the player and loads the MIDI for the Score shown, without drawing it again.
+        api.updateSettings()
+    }
 }
