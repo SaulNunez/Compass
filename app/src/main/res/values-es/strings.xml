@@ -62,6 +62,18 @@
     <string name="restore_unreadable">No se pudieron leer (dañadas o de una versión más reciente de Compass): %1$d</string>
     <string name="restore_not_a_backup">Ese archivo no es una copia de seguridad de Compass o está dañado.</string>
     <string name="restore_failed">No se pudo leer la copia de seguridad.</string>
+
+    <string name="song_share">Compartir</string>
+    <string name="song_share_chooser">Enviar «%1$s»</string>
+    <string name="song_share_failed">No se pudo preparar el archivo de la canción.</string>
+    <string name="song_file_untitled">Canción</string>
+    <string name="song_file_import">Importar</string>
+    <string name="song_file_imported">«%1$s» se añadió a tu biblioteca.</string>
+    <string name="song_file_imported_as_copy">«%1$s» se añadió como copia. Tu versión no cambió.</string>
+    <string name="song_file_already_present">«%1$s» ya está en tu biblioteca.</string>
+    <string name="song_file_not_a_song_file">Ese archivo no es un archivo de canción de Compass o está dañado.</string>
+    <string name="song_file_too_new">Ese archivo de canción se creó con una versión más reciente de Compass. Actualiza Compass para importarlo.</string>
+    <string name="song_file_import_failed">No se pudo leer el archivo de la canción.</string>
     <string name="new_song_title">Nueva canción</string>
     <string name="field_title">Título</string>
     <string name="field_artist">Artista</string>

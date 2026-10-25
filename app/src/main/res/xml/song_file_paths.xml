@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Song files are written here just before they are shared, and handed out through the FileProvider. -->
+<paths>
+    <cache-path name="song_files" path="song-files/" />
+</paths>
