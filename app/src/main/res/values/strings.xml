@@ -2,4 +2,87 @@
     <string name="app_name">Compass</string>
     <!-- Subtitle under a Song's title in Practice mode; %1$s is the artist. -->
     <string name="practice_mode_subtitle">%1$s · Practice mode</string>
+    <string name="practice_mode">Practice mode</string>
+    <string name="back_to_library">Library</string>
+
+    <!-- Library -->
+    <string name="library_title">Library</string>
+    <string name="library_search">Search title or artist</string>
+    <string name="library_sort_title">Title</string>
+    <string name="library_sort_artist">Artist</string>
+    <string name="library_sort_last_practiced">Last practiced</string>
+    <string name="library_empty">No Songs yet. Create one to get started.</string>
+    <string name="library_no_matches">No Songs match your search.</string>
+    <string name="new_song">New Song</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <!-- %1$s is the Song title. -->
+    <string name="delete_song_title">Delete “%1$s”?</string>
+    <string name="delete_song_message">This removes the Song and its practice settings. It can’t be undone.</string>
+
+    <!-- New Song -->
+    <string name="new_song_title">New Song</string>
+    <string name="field_title">Title</string>
+    <string name="field_artist">Artist</string>
+    <string name="field_tempo">Tempo (BPM)</string>
+    <string name="field_beats">Beats per measure</string>
+    <string name="field_beat_unit">Beat unit</string>
+    <string name="field_key">Key signature</string>
+    <string name="field_instrument">Instrument</string>
+    <string name="field_tuning">Tuning</string>
+    <string name="create">Create</string>
+
+    <string name="instrument_guitar_6">Guitar (6 strings)</string>
+    <string name="instrument_bass_4">Bass (4 strings)</string>
+    <string name="instrument_bass_5">Bass (5 strings)</string>
+    <!-- Default name for the first Track of a new Song. -->
+    <string name="track_name_guitar">Guitar</string>
+    <string name="track_name_bass">Bass</string>
+
+    <string name="tuning_guitar_standard">Standard</string>
+    <string name="tuning_guitar_drop_d">Drop D</string>
+    <string name="tuning_guitar_e_flat">E♭ (half step down)</string>
+    <string name="tuning_guitar_d_standard">D standard</string>
+    <string name="tuning_guitar_drop_c">Drop C</string>
+    <string name="tuning_guitar_dadgad">DADGAD</string>
+    <string name="tuning_bass_standard">Standard</string>
+    <string name="tuning_bass_drop_d">Drop D</string>
+    <string name="tuning_bass_e_flat">E♭ (half step down)</string>
+    <string name="tuning_bass_five_string_standard">Standard (B-E-A-D-G)</string>
+
+    <!-- Key names indexed from 7 flats to 7 sharps. -->
+    <string-array name="major_keys">
+        <item>C♭ major</item>
+        <item>G♭ major</item>
+        <item>D♭ major</item>
+        <item>A♭ major</item>
+        <item>E♭ major</item>
+        <item>B♭ major</item>
+        <item>F major</item>
+        <item>C major</item>
+        <item>G major</item>
+        <item>D major</item>
+        <item>A major</item>
+        <item>E major</item>
+        <item>B major</item>
+        <item>F♯ major</item>
+        <item>C♯ major</item>
+    </string-array>
+    <string-array name="minor_keys">
+        <item>A♭ minor</item>
+        <item>E♭ minor</item>
+        <item>B♭ minor</item>
+        <item>F minor</item>
+        <item>C minor</item>
+        <item>G minor</item>
+        <item>D minor</item>
+        <item>A minor</item>
+        <item>E minor</item>
+        <item>B minor</item>
+        <item>F♯ minor</item>
+        <item>C♯ minor</item>
+        <item>G♯ minor</item>
+        <item>D♯ minor</item>
+        <item>A♯ minor</item>
+    </string-array>
 </resources>

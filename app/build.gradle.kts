@@ -45,6 +45,7 @@ kotlin {
 
 dependencies {
     implementation(project(":domain"))
+    implementation(project(":storage"))
     implementation(libs.alphatab)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)

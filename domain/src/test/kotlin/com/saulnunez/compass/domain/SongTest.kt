@@ -26,6 +26,7 @@ class SongTest {
 
         assertThrows(IllegalArgumentException::class.java) {
             Song(
+                id = SongId("two-measures"),
                 title = "Two measures",
                 artist = "Nobody",
                 measures = listOf(measure, measure),

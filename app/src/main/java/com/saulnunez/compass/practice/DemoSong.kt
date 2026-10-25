@@ -9,18 +9,20 @@ import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.Pitch
 import com.saulnunez.compass.domain.Rest
 import com.saulnunez.compass.domain.Song
+import com.saulnunez.compass.domain.SongId
 import com.saulnunez.compass.domain.Tempo
 import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.domain.Track
 import com.saulnunez.compass.domain.Tuning
 import com.saulnunez.compass.domain.Voice
 
-/** A built-in Song shown until the Library exists: an E minor pentatonic run on guitar. */
-val demoSong: Song = run {
+/** A sample Song for previews: an E minor pentatonic run on guitar. */
+internal val demoSong: Song = run {
     fun eighth(string: Int, fret: Int) = Note(string, fret, Duration.EIGHTH)
     val measure = Measure(TimeSignature(4, 4), KeySignature(fifths = 1, isMinor = true), Tempo(100))
 
     Song(
+        id = SongId("demo-e-minor-pentatonic"),
         title = "E minor pentatonic",
         artist = "Compass",
         measures = List(3) { measure },

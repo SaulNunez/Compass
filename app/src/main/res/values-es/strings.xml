@@ -1,4 +1,82 @@
 <resources>
     <string name="app_name">Compass</string>
     <string name="practice_mode_subtitle">%1$s · Modo práctica</string>
+    <string name="practice_mode">Modo práctica</string>
+    <string name="back_to_library">Biblioteca</string>
+
+    <string name="library_title">Biblioteca</string>
+    <string name="library_search">Buscar título o artista</string>
+    <string name="library_sort_title">Título</string>
+    <string name="library_sort_artist">Artista</string>
+    <string name="library_sort_last_practiced">Última práctica</string>
+    <string name="library_empty">Aún no hay canciones. Crea una para empezar.</string>
+    <string name="library_no_matches">Ninguna canción coincide con tu búsqueda.</string>
+    <string name="new_song">Nueva canción</string>
+    <string name="delete">Eliminar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="delete_song_title">¿Eliminar «%1$s»?</string>
+    <string name="delete_song_message">Se eliminarán la canción y sus ajustes de práctica. No se puede deshacer.</string>
+
+    <string name="new_song_title">Nueva canción</string>
+    <string name="field_title">Título</string>
+    <string name="field_artist">Artista</string>
+    <string name="field_tempo">Tempo (BPM)</string>
+    <string name="field_beats">Pulsos por compás</string>
+    <string name="field_beat_unit">Figura del pulso</string>
+    <string name="field_key">Armadura</string>
+    <string name="field_instrument">Instrumento</string>
+    <string name="field_tuning">Afinación</string>
+    <string name="create">Crear</string>
+
+    <string name="instrument_guitar_6">Guitarra (6 cuerdas)</string>
+    <string name="instrument_bass_4">Bajo (4 cuerdas)</string>
+    <string name="instrument_bass_5">Bajo (5 cuerdas)</string>
+    <string name="track_name_guitar">Guitarra</string>
+    <string name="track_name_bass">Bajo</string>
+
+    <string name="tuning_guitar_standard">Estándar</string>
+    <string name="tuning_guitar_drop_d">Drop D</string>
+    <string name="tuning_guitar_e_flat">Mi♭ (medio tono abajo)</string>
+    <string name="tuning_guitar_d_standard">Re estándar</string>
+    <string name="tuning_guitar_drop_c">Drop C</string>
+    <string name="tuning_guitar_dadgad">DADGAD</string>
+    <string name="tuning_bass_standard">Estándar</string>
+    <string name="tuning_bass_drop_d">Drop D</string>
+    <string name="tuning_bass_e_flat">Mi♭ (medio tono abajo)</string>
+    <string name="tuning_bass_five_string_standard">Estándar (Si-Mi-La-Re-Sol)</string>
+
+    <string-array name="major_keys">
+        <item>Do♭ mayor</item>
+        <item>Sol♭ mayor</item>
+        <item>Re♭ mayor</item>
+        <item>La♭ mayor</item>
+        <item>Mi♭ mayor</item>
+        <item>Si♭ mayor</item>
+        <item>Fa mayor</item>
+        <item>Do mayor</item>
+        <item>Sol mayor</item>
+        <item>Re mayor</item>
+        <item>La mayor</item>
+        <item>Mi mayor</item>
+        <item>Si mayor</item>
+        <item>Fa♯ mayor</item>
+        <item>Do♯ mayor</item>
+    </string-array>
+    <string-array name="minor_keys">
+        <item>La♭ menor</item>
+        <item>Mi♭ menor</item>
+        <item>Si♭ menor</item>
+        <item>Fa menor</item>
+        <item>Do menor</item>
+        <item>Sol menor</item>
+        <item>Re menor</item>
+        <item>La menor</item>
+        <item>Mi menor</item>
+        <item>Si menor</item>
+        <item>Fa♯ menor</item>
+        <item>Do♯ menor</item>
+        <item>Sol♯ menor</item>
+        <item>Re♯ menor</item>
+        <item>La♯ menor</item>
+    </string-array>
 </resources>

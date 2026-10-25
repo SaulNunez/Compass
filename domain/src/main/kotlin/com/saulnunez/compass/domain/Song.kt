@@ -19,7 +19,12 @@ data class Measure(
     val tempo: Tempo,
 )
 
+/** A Song's stable identity, kept across edits, Backups and Song files. */
+@JvmInline
+value class SongId(val value: String)
+
 data class Song(
+    val id: SongId,
     val title: String,
     val artist: String,
     val measures: List<Measure>,
@@ -33,3 +38,23 @@ data class Song(
         }
     }
 }
+
+/** Measures a new Song starts with, so there is room to write straight away. */
+const val NEW_SONG_MEASURE_COUNT = 4
+
+fun newSong(
+    id: SongId,
+    title: String,
+    artist: String,
+    tempo: Tempo,
+    timeSignature: TimeSignature,
+    keySignature: KeySignature,
+    trackName: String,
+    instrument: Instrument,
+): Song = Song(
+    id = id,
+    title = title,
+    artist = artist,
+    measures = List(NEW_SONG_MEASURE_COUNT) { Measure(timeSignature, keySignature, tempo) },
+    tracks = listOf(Track(trackName, instrument, Voice(List(NEW_SONG_MEASURE_COUNT) { emptyList() }))),
+)

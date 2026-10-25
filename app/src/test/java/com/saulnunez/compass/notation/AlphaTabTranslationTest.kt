@@ -10,6 +10,7 @@ import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.Pitch
 import com.saulnunez.compass.domain.Rest
 import com.saulnunez.compass.domain.Song
+import com.saulnunez.compass.domain.SongId
 import com.saulnunez.compass.domain.Tempo
 import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.domain.Track
@@ -24,6 +25,7 @@ import alphaTab.model.KeySignature as AlphaTabKeySignature
 class AlphaTabTranslationTest {
 
     private val song = Song(
+        id = SongId("translation-check"),
         title = "Translation check",
         artist = "Compass",
         measures = listOf(
