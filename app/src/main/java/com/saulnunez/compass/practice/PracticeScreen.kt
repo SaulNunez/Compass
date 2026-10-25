@@ -4,7 +4,6 @@ import alphaTab.AlphaTabView
 import alphaTab.PlayerMode
 import alphaTab.Settings
 import alphaTab.StaveProfile
-import alphaTab.collections.DoubleList
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -80,7 +79,9 @@ private fun TablatureView(song: Song, modifier: Modifier = Modifier) {
             // update runs on every recomposition; only re-render when the Song changed.
             if (view.tag !== score) {
                 view.tag = score
-                view.api.renderScore(score, DoubleList(0.0))
+                // Setting tracks (rather than calling renderScore) lets alphaTab wait until the
+                // view is visible and measured; rendering earlier is skipped at width 0.
+                view.tracks = listOf(score.tracks[0])
             }
         },
     )
