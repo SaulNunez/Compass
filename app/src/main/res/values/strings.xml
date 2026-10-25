@@ -178,4 +178,18 @@
     <string name="measure_settings_title">Measure %1$d</string>
     <string name="measure_settings_hint">Changes apply to every Track, from this Measure until the next change.</string>
     <string name="apply">Apply</string>
+    <string name="new_section">New Section</string>
+    <string name="edit_section">Edit Section</string>
+    <string name="copy_section">Copy Section</string>
+    <string name="paste_measures">Paste Measures</string>
+    <string name="paste_measures_description">Paste the copied Measures before Measure %1$d, in every Track</string>
+    <string name="no_section">No Section</string>
+    <string name="section_at_cursor">Section: %1$s</string>
+    <string name="new_section_title">New Section</string>
+    <string name="edit_section_title">Section %1$s</string>
+    <string name="field_section_name">Name</string>
+    <string name="field_first_measure">First Measure</string>
+    <string name="field_last_measure">Last Measure</string>
+    <string name="section_overlaps">These Measures belong to another Section.</string>
+    <string name="remove_section">Remove Section</string>
 </resources>

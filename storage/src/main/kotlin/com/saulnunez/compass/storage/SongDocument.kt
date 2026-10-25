@@ -9,6 +9,7 @@ import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Pitch
 import com.saulnunez.compass.domain.Rest
+import com.saulnunez.compass.domain.Section
 import com.saulnunez.compass.domain.Song
 import com.saulnunez.compass.domain.SongId
 import com.saulnunez.compass.domain.Tempo
@@ -34,7 +35,13 @@ internal data class SongDocument(
     val artist: String,
     val measures: List<MeasureDocument>,
     val tracks: List<TrackDocument>,
+    /** Since format version 3. */
+    val sections: List<SectionDocument>,
 )
+
+/** Since format version 3: a Section's name and its first and last Measure, as 0-based indexes into the Song's Measures. */
+@Serializable
+internal data class SectionDocument(val name: String, val firstMeasure: Int, val lastMeasure: Int)
 
 @Serializable
 internal data class MeasureDocument(
@@ -108,6 +115,7 @@ internal fun Song.toDocument() = SongDocument(
             measures = track.voice.measures.map { elements -> elements.map { it.toDocument() } },
         )
     },
+    sections = sections.map { SectionDocument(it.name, firstMeasure = it.first, lastMeasure = it.last) },
 )
 
 private fun VoiceElement.toDocument(): VoiceElementDocument = when (this) {
@@ -149,6 +157,7 @@ internal fun SongDocument.toSong() = Song(
             voice = Voice(track.measures.map { elements -> elements.map { it.toVoiceElement() } }),
         )
     },
+    sections = sections.map { Section(it.name, first = it.firstMeasure, last = it.lastMeasure) },
 )
 
 private fun VoiceElementDocument.toVoiceElement(): VoiceElement = when (this) {
@@ -172,4 +181,4 @@ private fun NoteValueDocument.toNoteValue() = when (this) {
     NoteValueDocument.THIRTY_SECOND -> NoteValue.THIRTY_SECOND
 }
 
-internal const val CURRENT_FORMAT_VERSION = 2
+internal const val CURRENT_FORMAT_VERSION = 3
