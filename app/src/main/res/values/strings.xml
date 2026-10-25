@@ -266,4 +266,6 @@
     <string name="track_solo">Solo</string>
     <string name="track_mute_description">Mute %1$s</string>
     <string name="track_solo_description">Solo %1$s</string>
+    <!-- Read out while the notation area is still empty, before the Song is first drawn. -->
+    <string name="notation_loading">Preparing the Song…</string>
 </resources>

@@ -228,4 +228,5 @@
     <string name="track_solo">Solo</string>
     <string name="track_mute_description">Silenciar %1$s</string>
     <string name="track_solo_description">Solo %1$s</string>
+    <string name="notation_loading">Preparando la canción…</string>
 </resources>
