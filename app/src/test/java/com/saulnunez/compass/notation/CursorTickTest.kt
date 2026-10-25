@@ -45,6 +45,11 @@ class CursorTickTest {
                     ),
                 ),
             ),
+            Track(
+                name = "Bass",
+                instrument = TuningPreset.BASS_STANDARD.instrument(),
+                voice = Voice(listOf(listOf(Note(4, 0, Duration.HALF), Note(4, 3, Duration.HALF)), emptyList(), emptyList())),
+            ),
         ),
     )
 
@@ -56,7 +61,7 @@ class CursorTickTest {
         generator.tickLookup
     }
 
-    private fun tickAt(measure: Int, beat: Int) = tickLookup.startTickOf(score, Cursor(measure, beat, string = 1))
+    private fun tickAt(measure: Int, beat: Int, track: Int = 0) = tickLookup.startTickOf(score, track, Cursor(measure, beat, string = 1))
 
     @Test
     fun `Playback from the cursor starts at the element under it`() {
@@ -73,6 +78,12 @@ class CursorTickTest {
     @Test
     fun `in an unwritten Measure it starts at the Measure`() {
         assertEquals(7.0 * QUARTER, tickAt(2, 0), 0.0)
+    }
+
+    @Test
+    fun `it follows the elements of the Track being edited`() {
+        assertEquals(2.0 * QUARTER, tickAt(0, 1, track = 1), 0.0)
+        assertEquals(1.0 * QUARTER, tickAt(0, 1, track = 0), 0.0)
     }
 
     private companion object {

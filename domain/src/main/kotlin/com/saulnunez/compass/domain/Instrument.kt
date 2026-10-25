@@ -9,6 +9,12 @@ enum class InstrumentKind { GUITAR, BASS }
 /** The open-string pitches of an Instrument, from string 1 (highest) to the lowest string. */
 data class Tuning(val openStrings: List<Pitch>) {
     val stringCount: Int get() = openStrings.size
+
+    /** This Tuning with string [string] (from 1) tuned to [pitch]. */
+    fun withString(string: Int, pitch: Pitch): Tuning {
+        require(string in 1..stringCount) { "No string $string on a $stringCount-string Tuning" }
+        return Tuning(openStrings.toMutableList().apply { set(string - 1, pitch) })
+    }
 }
 
 data class Instrument(val kind: InstrumentKind, val tuning: Tuning) {

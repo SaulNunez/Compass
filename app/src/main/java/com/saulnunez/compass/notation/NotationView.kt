@@ -19,7 +19,13 @@ import com.saulnunez.compass.domain.ShownViews
 import com.saulnunez.compass.domain.Song
 
 /** What the alphaTab view last drew, so recomposition only re-renders what changed. */
-private data class Drawn(val score: Score, val views: ShownViews, val controls: PlayerControls?, val theme: NotationTheme)
+private data class Drawn(
+    val score: Score,
+    val track: Int,
+    val views: ShownViews,
+    val controls: PlayerControls?,
+    val theme: NotationTheme,
+)
 
 /**
  * Everything the alphaTab view needs to match the app's light or dark theme: the notation itself,
@@ -39,8 +45,8 @@ private const val BAR_CURSOR_ALPHA = 0.18f
 private const val BEAT_CURSOR_ALPHA = 0.75f
 
 /**
- * Draws the first Track of [song] in the [shownViews] with alphaTab, as wrapped lines that scroll
- * vertically; redraws whenever [song] or [shownViews] changes.
+ * Draws the Track at index [track] of [song] in the [shownViews] with alphaTab, as wrapped lines
+ * that scroll vertically; redraws whenever any of them changes.
  *
  * With a [player], the view also plays the Song (every Track) with [controls] applied: a cursor
  * follows Playback, the view scrolls along, and tapping a Measure starts Playback there.
@@ -53,6 +59,7 @@ fun NotationView(
     modifier: Modifier = Modifier,
     player: NotationPlayer? = null,
     controls: PlayerControls? = null,
+    track: Int = 0,
 ) {
     // alphaTab's native view can't run in the Compose preview.
     if (LocalInspectionMode.current) {
@@ -102,13 +109,13 @@ fun NotationView(
                 // Re-applying the settings re-renders whatever Score the view holds.
                 view.settings = settings
             }
-            if (drawn?.score !== score) {
+            if (drawn?.score !== score || drawn.track != track) {
                 // Setting tracks (rather than calling renderScore) lets alphaTab wait until the
                 // view is visible and measured; rendering earlier is skipped at width 0.
-                view.tracks = listOf(score.tracks[0])
+                view.tracks = listOf(score.tracks[track])
             }
             if (controls != null && drawn?.controls != controls) view.api.apply(controls)
-            view.tag = Drawn(score, shownViews, controls, theme)
+            view.tag = Drawn(score, track, shownViews, controls, theme)
         },
     )
 }

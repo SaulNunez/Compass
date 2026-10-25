@@ -51,6 +51,7 @@ internal fun Edit.restructure(before: Song): Restructure = when (this) {
     is ResizeSection, is ChangeSection, is RenameSection,
     is WriteElement, is WriteNote, is DeleteNote, is SetTie, is SetTechnique, is ChangeDuration, is DeleteElement,
     is ChangeTimeSignature, is ChangeKeySignature, is ChangeTempo, is ChangeMeasure,
+    is AddTrack, is RemoveTrack, is RenameTrack, is ChangeTuning, is ChangeSound, is ChangeTrack,
     -> Restructure.none(before)
 }
 

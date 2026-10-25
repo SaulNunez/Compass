@@ -210,31 +210,28 @@ fun CompassApp() {
             BackHandler(onBack = backToPractice)
             val id = destination.songId
             val song = loadSong(store, storeLock, id, onMissing = goToLibrary)
-            // The Practice settings as saved for the Song as it was before this session's edits.
-            val practiceSettings by produceState<PracticeSettings?>(null, id) {
+            // The Practice settings as they were when editing started, so they can follow the edits.
+            val settingsBefore by produceState<PracticeSettings?>(null, id) {
                 value = storeLock.withLock { withContext(Dispatchers.IO) { store.practiceSettings(id) } }
             }
-            val savedSettings = practiceSettings
-            if (song != null && savedSettings != null) {
+            val initialSettings = settingsBefore
+            if (song != null && initialSettings != null) {
                 var session by remember(song) { mutableStateOf(EditSession.start(song)) }
-                var reconciledSettings by remember(song, savedSettings) { mutableStateOf(savedSettings) }
+                var savedSettings by remember(song, initialSettings) { mutableStateOf(initialSettings) }
                 EditScreen(
                     session = session,
                     onSessionChange = { next ->
                         val edited = next.song != session.song
                         session = next
-                        // The Loop follows the Measures and Sections it was set on (undone edits included).
-                        val reconciled = next.reconcile(savedSettings)
-                        val settingsChanged = reconciled != reconciledSettings
-                        reconciledSettings = reconciled
+                        val reconciled = next.reconcile(initialSettings)
+                        val settingsChanged = reconciled != savedSettings
+                        savedSettings = reconciled
                         // Every edit is saved straight away, in the app's scope so leaving Edit mode can't cancel it.
                         if (edited) {
                             scope.launch {
                                 save(context, store, storeLock, next.song)
                                 if (settingsChanged) {
-                                    storeLock.withLock {
-                                        withContext(Dispatchers.IO) { runCatching { store.savePracticeSettings(id, reconciled) } }
-                                    }
+                                    storeLock.withLock { withContext(Dispatchers.IO) { runCatching { store.savePracticeSettings(id, reconciled) } } }
                                 }
                             }
                         }

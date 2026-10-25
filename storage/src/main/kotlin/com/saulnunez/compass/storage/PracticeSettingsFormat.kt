@@ -22,6 +22,8 @@ private data class PracticeSettingsDocument(
     val countIn: Boolean,
     /** Added in version 2; version 1 has no Loop. */
     val loop: LoopDocument? = null,
+    /** Added without a new format version: settings saved before it read the first Track. */
+    val readTrack: Int = 0,
 )
 
 /** A Section Loop has [section]; a Measure-range Loop has [first] and [last] (all 0-based). */
@@ -53,6 +55,7 @@ internal object PracticeSettingsFormat {
                 is Loop.OfSection -> LoopDocument(section = loop.section)
                 is Loop.OfMeasures -> LoopDocument(first = loop.first, last = loop.last)
             },
+            readTrack = settings.readTrack,
         ),
     )
 
@@ -73,6 +76,7 @@ internal object PracticeSettingsFormat {
             click = document.click,
             countIn = document.countIn,
             loop = document.loop?.toLoop(),
+            readTrack = document.readTrack.coerceAtLeast(0),
         )
     }.getOrDefault(PracticeSettings())
 }

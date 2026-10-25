@@ -32,4 +32,6 @@ data class PracticeSettings(
     val countIn: Boolean = false,
     /** The Measures Playback repeats, or null to play to the end of the Song. */
     val loop: Loop? = null,
+    /** The index of the Track being read: the one the views show. */
+    val readTrack: Int = 0,
 )

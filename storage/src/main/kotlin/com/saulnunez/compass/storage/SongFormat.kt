@@ -24,6 +24,7 @@ object SongFormat {
         if (formatVersion < 2) document = document.upgradeFromVersion1()
         if (formatVersion < 3) document = document.upgradeFromVersion2()
         if (formatVersion < 4) document = document.upgradeFromVersion3()
+        if (formatVersion < 5) document = document.upgradeFromVersion4()
         return songJson.decodeFromJsonElement(SongDocument.serializer(), document).toSong()
     }
 }
@@ -33,6 +34,18 @@ private fun JsonObject.upgradeFromVersion3(): JsonObject = withEachElement { ele
     if (element["type"]?.jsonPrimitive?.content != "note") return@withEachElement element
     JsonObject(element + mapOf("tied" to JsonPrimitive(false), "techniques" to JsonArray(emptyList())))
 }.withFormatVersion(4)
+
+/** Version 5 gave each Track a Sound: a version 4 Track plays with its Instrument's default Sound. */
+private fun JsonObject.upgradeFromVersion4(): JsonObject {
+    val tracks = getValue("tracks").jsonArray.map { track ->
+        val sound = when (track.jsonObject.getValue("instrument").jsonPrimitive.content) {
+            "bass" -> "fingered-bass"
+            else -> "clean-electric-guitar"
+        }
+        JsonObject(track.jsonObject + ("sound" to JsonPrimitive(sound)))
+    }
+    return JsonObject(this + ("tracks" to JsonArray(tracks))).withFormatVersion(5)
+}
 
 class UnsupportedSongFormatException(val formatVersion: Int) :
     IllegalArgumentException("Song format version $formatVersion is not supported by this version of Compass")

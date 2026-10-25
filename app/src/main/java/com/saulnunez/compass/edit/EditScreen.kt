@@ -81,10 +81,11 @@ import com.saulnunez.compass.practice.demoSong
 import com.saulnunez.compass.ui.theme.CompassTheme
 
 /**
- * Edit mode: writes Notes, Chords and Rests, ties and Techniques into the Tablature of a Song's first Track through
- * [session]. Every action hands the next session to [onSessionChange]; [onDone] switches back
- * to Practice mode. Playback here only plays the Song from the cursor and stops; the tempo
- * percentage, click and count-in are Practice mode's.
+ * Edit mode: adds, removes and changes a Song's Tracks and writes Notes, Chords and Rests, ties
+ * and Techniques into the Tablature of the Track being edited, through [session]. Every action
+ * hands the next session to [onSessionChange]; [onDone] switches back to Practice mode. Playback
+ * here only plays the Song from the cursor and stops; the tempo percentage, click and count-in
+ * are Practice mode's.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,7 +128,7 @@ fun EditScreen(
             panel = { sideBySide -> EditTools(session, onSessionChange, sideBySide) },
         ) {
             // Rebuilt from the edited Song on every change, so Playback always plays what was just written.
-            NotationView(song, ShownViews.TABLATURE, Modifier.fillMaxSize(), player = player)
+            NotationView(song, ShownViews.TABLATURE, Modifier.fillMaxSize(), player = player, track = session.track)
         }
     }
 }
@@ -159,6 +160,7 @@ private fun EditTools(session: EditSession, onSessionChange: (EditSession) -> Un
                 .verticalScroll(rememberScrollState())
                 .padding(top = 4.dp),
         ) {
+            TrackTools(session, onSessionChange)
             MeasureStrip(session, onSessionChange)
             MeasureTools(session, onSessionChange)
             SectionTools(session, onSessionChange)
@@ -178,12 +180,63 @@ private fun EditTools(session: EditSession, onSessionChange: (EditSession) -> Un
 
 private val PADS_MAX_WIDTH = 560.dp
 
+/** Picks the Track being edited, adds a Track, and opens the edited Track's settings. */
+@Composable
+private fun TrackTools(session: EditSession, onSessionChange: (EditSession) -> Unit) {
+    var adding by rememberSaveable { mutableStateOf(false) }
+    var changing by rememberSaveable { mutableStateOf(false) }
+    val tracks = session.song.tracks
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+    ) {
+        Dropdown(
+            label = stringResource(R.string.field_edited_track),
+            options = tracks.indices.toList(),
+            selected = session.track,
+            optionLabel = { tracks[it].name },
+            onSelect = { onSessionChange(session.editTrack(it)) },
+            modifier = Modifier.weight(1f),
+        )
+        OutlinedButton(onClick = { changing = true }) { Text(stringResource(R.string.track_settings)) }
+        OutlinedButton(onClick = { adding = true }) { Text(stringResource(R.string.add_track)) }
+    }
+    if (adding) {
+        NewTrackDialog(
+            onAdd = { name, instrument, sound ->
+                adding = false
+                onSessionChange(session.addTrack(name, instrument, sound))
+            },
+            onDismiss = { adding = false },
+        )
+    }
+    if (changing) {
+        TrackSettingsDialog(
+            track = tracks[session.track],
+            onApply = { name, tuning, sound ->
+                changing = false
+                onSessionChange(session.changeTrack(name, tuning, sound))
+            },
+            onRemove = if (session.canRemoveTrack) {
+                {
+                    changing = false
+                    onSessionChange(session.removeTrack())
+                }
+            } else {
+                null
+            },
+            onDismiss = { changing = false },
+        )
+    }
+}
+
 /** Plays the Song from the cursor, or stops Playback and goes back to where it started. */
 @Composable
 private fun PlayFromCursorButton(player: NotationPlayer, session: EditSession) {
     val playDescription = stringResource(R.string.playback_play_from_cursor)
     TextButton(
-        onClick = { if (player.isPlaying) player.stop() else player.playFrom(session.cursor) },
+        onClick = { if (player.isPlaying) player.stop() else player.playFrom(session.cursor, session.track) },
         enabled = player.isReady,
         modifier = Modifier.semantics { if (!player.isPlaying) contentDescription = playDescription },
     ) {
@@ -202,7 +255,7 @@ private fun MeasureStrip(session: EditSession, onSessionChange: (EditSession) ->
         contentPadding = PaddingValues(horizontal = 8.dp),
     ) {
         itemsIndexed(session.song.measures) { index, _ ->
-            val fill = session.song.measureFill(track = 0, measure = index)
+            val fill = session.song.measureFill(track = session.track, measure = index)
             val flagged = fill == MeasureFill.INCOMPLETE || fill == MeasureFill.OVERFULL
             val description = measureDescription(index + 1, fill)
             // A Section's name leads its first Measure.
@@ -463,10 +516,10 @@ private fun SectionDialog(
 /** The cursor's Measure as a grid of strings by beats, the cursor's cell highlighted. */
 @Composable
 private fun MeasureEditor(session: EditSession) {
-    val track = session.song.tracks[0]
+    val track = session.song.tracks[session.track]
     val measure = session.cursor.measure
     val elements = track.voice.measures[measure]
-    val fill = session.song.measureFill(track = 0, measure = measure)
+    val fill = session.song.measureFill(track = session.track, measure = measure)
     val hasFreeBeat = fill == MeasureFill.UNWRITTEN || fill == MeasureFill.INCOMPLETE
     val columns = elements.size + if (hasFreeBeat) 1 else 0
 

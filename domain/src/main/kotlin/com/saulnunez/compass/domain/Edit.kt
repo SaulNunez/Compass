@@ -178,6 +178,54 @@ data class ChangeMeasure(val measure: Int, val settings: Measure) : Edit {
     ).fold(song) { edited, edit -> edit.applyTo(edited) }
 }
 
+/** Adds a Track after the last one, with every Measure of the Song left empty. */
+data class AddTrack(val name: String, val instrument: Instrument, val sound: Sound) : Edit {
+    override fun applyTo(song: Song): Song =
+        song.copy(tracks = song.tracks + Track(name, instrument, Voice(List(song.measures.size) { emptyList() }), sound))
+}
+
+/** Removes the Track at index [track]; the Tracks after it move up. A Song keeps at least one Track. */
+data class RemoveTrack(val track: Int) : Edit {
+    override fun applyTo(song: Song): Song {
+        require(song.tracks.size > 1) { "A Song keeps at least one Track" }
+        return song.copy(tracks = song.tracks.toMutableList().apply { removeAt(track) })
+    }
+}
+
+data class RenameTrack(val track: Int, val name: String) : Edit {
+    override fun applyTo(song: Song): Song = song.editTrack(track) { it.copy(name = name) }
+}
+
+/**
+ * Tunes the Track at index [track] to [tuning], which must have as many strings. Every fret stays
+ * as written, so the Notes sound at new pitches.
+ */
+data class ChangeTuning(val track: Int, val tuning: Tuning) : Edit {
+    override fun applyTo(song: Song): Song = song.editTrack(track) {
+        require(tuning.stringCount == it.instrument.stringCount) {
+            "A ${it.instrument.stringCount}-string Track can't take a ${tuning.stringCount}-string Tuning"
+        }
+        it.copy(instrument = it.instrument.copy(tuning = tuning))
+    }
+}
+
+/** Gives the Track at index [track] a [sound] suited to its Instrument. */
+data class ChangeSound(val track: Int, val sound: Sound) : Edit {
+    override fun applyTo(song: Song): Song = song.editTrack(track) { it.copy(sound = sound) }
+}
+
+/**
+ * Gives the Track at index [track] a new name, Tuning and Sound in one edit, each changed as
+ * [RenameTrack], [ChangeTuning] and [ChangeSound] do.
+ */
+data class ChangeTrack(val track: Int, val name: String, val tuning: Tuning, val sound: Sound) : Edit {
+    override fun applyTo(song: Song): Song = listOf(RenameTrack(track, name), ChangeTuning(track, tuning), ChangeSound(track, sound))
+        .fold(song) { edited, edit -> edit.applyTo(edited) }
+}
+
+private fun Song.editTrack(track: Int, change: (Track) -> Track): Song =
+    copy(tracks = tracks.toMutableList().apply { set(track, change(get(track))) })
+
 /** Adds [section] to the Song; its Measures must not belong to another Section. */
 data class AddSection(val section: Section) : Edit {
     override fun applyTo(song: Song): Song = song.copy(sections = (song.sections + section).sortedBy { it.first })
