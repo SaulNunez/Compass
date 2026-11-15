@@ -7,6 +7,9 @@ import androidx.compose.ui.res.stringResource
 import com.saulnunez.compass.R
 import com.saulnunez.compass.domain.KeySignature
 import com.saulnunez.compass.domain.Pitch
+import com.saulnunez.compass.domain.Song
+import com.saulnunez.compass.domain.isPickup
+import com.saulnunez.compass.domain.measureNumber
 import com.saulnunez.compass.domain.Sound
 import com.saulnunez.compass.domain.SupportedInstrument
 import com.saulnunez.compass.domain.Technique
@@ -78,3 +81,13 @@ fun pitchLabel(pitch: Pitch): String {
     val names = stringArrayResource(R.array.pitch_classes)
     return stringResource(R.string.pitch_name, names[pitch.midi % 12], pitch.midi / 12 - 1)
 }
+
+/** "Pickup" for a Song's Pickup, otherwise "Measure n", numbered from the first full Measure. */
+@Composable
+fun measureLabel(song: Song, measure: Int): String =
+    if (song.isPickup(measure)) stringResource(R.string.pickup) else stringResource(R.string.measure_number, song.measureNumber(measure))
+
+/** Measure [measure] as it is shown in a range: "Pickup", or just its number. */
+@Composable
+fun measureRangeEnd(song: Song, measure: Int): String =
+    if (song.isPickup(measure)) stringResource(R.string.pickup) else song.measureNumber(measure).toString()

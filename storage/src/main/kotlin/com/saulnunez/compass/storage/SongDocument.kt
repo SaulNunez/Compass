@@ -10,6 +10,7 @@ import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.perChordTechniques
 import com.saulnunez.compass.domain.withPerChordTechniques
 import com.saulnunez.compass.domain.NoteValue
+import com.saulnunez.compass.domain.Pickup
 import com.saulnunez.compass.domain.Pitch
 import com.saulnunez.compass.domain.Rest
 import com.saulnunez.compass.domain.Section
@@ -42,6 +43,8 @@ internal data class SongDocument(
     val tracks: List<TrackDocument>,
     /** Since format version 3. */
     val sections: List<SectionDocument>,
+    /** Since format version 6: how many 16th notes the Pickup lasts, or null when the first Measure is full. */
+    val pickupSixteenths: Int?,
 )
 
 /** Since format version 3: a Section's name and its first and last Measure, as 0-based indexes into the Song's Measures. */
@@ -166,6 +169,7 @@ internal fun Song.toDocument() = SongDocument(
         )
     },
     sections = sections.map { SectionDocument(it.name, firstMeasure = it.first, lastMeasure = it.last) },
+    pickupSixteenths = pickup?.sixteenths,
 )
 
 private fun VoiceElement.toDocument(): VoiceElementDocument = when (this) {
@@ -251,6 +255,7 @@ internal fun SongDocument.toSong() = Song(
         )
     },
     sections = sections.map { Section(it.name, first = it.firstMeasure, last = it.lastMeasure) },
+    pickup = pickupSixteenths?.let(::Pickup),
 )
 
 private fun VoiceElementDocument.toVoiceElement(): VoiceElement = when (this) {
@@ -293,4 +298,4 @@ private fun NoteValueDocument.toNoteValue() = when (this) {
     NoteValueDocument.THIRTY_SECOND -> NoteValue.THIRTY_SECOND
 }
 
-internal const val CURRENT_FORMAT_VERSION = 5
+internal const val CURRENT_FORMAT_VERSION = 6

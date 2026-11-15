@@ -7,6 +7,7 @@ import com.saulnunez.compass.domain.KeySignature
 import com.saulnunez.compass.domain.Measure
 import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.NoteValue
+import com.saulnunez.compass.domain.Pickup
 import com.saulnunez.compass.domain.Rest
 import com.saulnunez.compass.domain.Section
 import com.saulnunez.compass.domain.SongId
@@ -98,6 +99,41 @@ class SongFormatTest {
         )
 
         assertEquals(band, SongFormat.decode(SongFormat.encode(band)))
+    }
+
+    @Test
+    fun `a Pickup survives a save and load`() {
+        val withPickup = song.copy(pickup = Pickup(sixteenths = 2))
+
+        assertEquals(withPickup, SongFormat.decode(SongFormat.encode(withPickup)))
+    }
+
+    @Test
+    fun `a version 5 document is upgraded on load, with no Pickup`() {
+        val versionFive = """
+            {
+              "formatVersion": 5,
+              "id": "solo",
+              "title": "Solo",
+              "artist": "",
+              "measures": [{ "beats": 4, "beatUnit": 4, "keyFifths": 0, "keyIsMinor": false, "tempo": 100 }],
+              "tracks": [
+                {
+                  "name": "Guitar",
+                  "instrument": "guitar",
+                  "openStrings": [64, 59, 55, 50, 45, 40],
+                  "measures": [[{ "type": "note", "string": 1, "fret": 5, "duration": { "value": "quarter", "dotted": false, "triplet": false }, "tied": false, "techniques": [] }]],
+                  "sound": "clean-electric-guitar"
+                }
+              ],
+              "sections": []
+            }
+        """.trimIndent()
+
+        val song = SongFormat.decode(versionFive)
+
+        assertEquals(null, song.pickup)
+        assertEquals(listOf(Note(1, 5, Duration.QUARTER)), song.tracks[0].voice.measures.single())
     }
 
     @Test

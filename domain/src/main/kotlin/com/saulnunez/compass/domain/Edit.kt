@@ -130,6 +130,7 @@ data class DeleteElement(val track: Int, val measure: Int, val beat: Int) : Edit
 data class InsertMeasure(val at: Int) : Edit {
     override fun applyTo(song: Song): Song {
         require(at in 0..song.measures.size) { "Cannot insert a Measure at ${at + 1}" }
+        require(at > 0 || song.pickup == null) { "No Measure goes before the Pickup" }
         val inserted = song.measures[(at - 1).coerceAtLeast(0)]
         return song.insertMeasures(at, listOf(inserted), song.tracks.map { listOf(emptyList()) })
     }
@@ -140,6 +141,7 @@ data class InsertMeasure(val at: Int) : Edit {
 /**
  * Removes Measure [measure] from every Track; what followed it moves up. A Song keeps at least one
  * Measure. A Section holding the Measure gets shorter, and goes when it was its only Measure.
+ * Deleting a Pickup removes the Pickup, so the Measure after it is a full first Measure.
  */
 data class DeleteMeasure(val measure: Int) : Edit {
     override fun applyTo(song: Song): Song {
@@ -149,6 +151,7 @@ data class DeleteMeasure(val measure: Int) : Edit {
             tracks = song.tracks.map { track ->
                 track.copy(voice = Voice(track.voice.measures.toMutableList().apply { removeAt(measure) }).withTiesFollowed())
             },
+            pickup = song.pickup.takeIf { measure != 0 },
             sections = song.sections.mapNotNull { section ->
                 when {
                     section.first > measure -> section.copy(first = section.first - 1, last = section.last - 1)
@@ -161,6 +164,19 @@ data class DeleteMeasure(val measure: Int) : Edit {
     }
 
     override fun restructure(before: Song) = measureDeleted(before, measure)
+}
+
+/**
+ * Makes the first Measure a Pickup lasting [pickup], or changes how long it lasts. Nothing written
+ * in it is removed; what no longer fits makes it overfull.
+ */
+data class MakePickup(val pickup: Pickup) : Edit {
+    override fun applyTo(song: Song): Song = song.copy(pickup = pickup)
+}
+
+/** Makes the first Measure full length again; nothing written in it is removed. */
+data object RemovePickup : Edit {
+    override fun applyTo(song: Song): Song = song.copy(pickup = null)
 }
 
 /** Changes the time signature at Measure [measure]; see [changeFrom] for how far it reaches. */
@@ -303,6 +319,7 @@ fun Song.copyMeasures(first: Int, last: Int): CopiedMeasures = CopiedMeasures(
 data class PasteMeasures(val at: Int, val copied: CopiedMeasures) : Edit {
     override fun applyTo(song: Song): Song {
         require(at in 0..song.measures.size) { "Cannot paste Measures at ${at + 1}" }
+        require(at > 0 || song.pickup == null) { "No Measure goes before the Pickup" }
         return song.insertMeasures(at, copied.measures, copied.tracks)
     }
 

@@ -10,6 +10,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -27,7 +28,10 @@ import androidx.compose.ui.unit.dp
 import com.saulnunez.compass.R
 import com.saulnunez.compass.domain.Loop
 import com.saulnunez.compass.domain.Song
+import com.saulnunez.compass.domain.measureNumber
+import com.saulnunez.compass.domain.measureNumbered
 import com.saulnunez.compass.domain.measuresIn
+import com.saulnunez.compass.library.measureRangeEnd
 import com.saulnunez.compass.ui.NumberField
 
 /** Shows the Loop in use, if any, and lets the person pick another: a Section, any Measures, or none. */
@@ -44,7 +48,7 @@ fun LoopChoice(song: Song, loop: Loop?, onLoopChange: (Loop?) -> Unit, modifier:
                 when {
                     measures == null -> stringResource(R.string.playback_loop)
                     loop is Loop.OfSection -> stringResource(R.string.loop_of_section, song.sections[loop.section].name)
-                    else -> stringResource(R.string.loop_of_measures, measures.first + 1, measures.last + 1)
+                    else -> stringResource(R.string.loop_of_measures, measureRangeEnd(song, measures.first), measureRangeEnd(song, measures.last))
                 },
             )
         },
@@ -102,16 +106,16 @@ private fun LoopDialog(song: Song, loop: Loop?, onChoose: (Loop?) -> Unit, onDis
             },
         )
     }
-    val initial = (loop as? Loop.OfMeasures)?.let { it.first + 1 to it.last + 1 } ?: (1 to song.measures.size)
-    var firstText by rememberSaveable { mutableStateOf(initial.first.toString()) }
-    var lastText by rememberSaveable { mutableStateOf(initial.second.toString()) }
-    val measureCount = song.measures.size
-    val first = firstText.toIntOrNull()?.takeIf { it in 1..measureCount }
-    val last = lastText.toIntOrNull()?.takeIf { it in 1..measureCount && (first == null || it >= first) }
+    // Typed as the numbers Measures are shown with, 0 for a Pickup; [first] and [last] are 0-based.
+    val initial = (loop as? Loop.OfMeasures)?.let { it.first to it.last } ?: (0 to song.measures.lastIndex)
+    var firstText by rememberSaveable { mutableStateOf(song.measureNumber(initial.first).toString()) }
+    var lastText by rememberSaveable { mutableStateOf(song.measureNumber(initial.second).toString()) }
+    val first = firstText.toIntOrNull()?.let(song::measureNumbered)
+    val last = lastText.toIntOrNull()?.let(song::measureNumbered)?.takeIf { first == null || it >= first }
 
     val chosen: Loop? = when (val selection = selected) {
         LoopSelection.None -> null
-        LoopSelection.OfMeasures -> if (first != null && last != null) Loop.OfMeasures(first - 1, last - 1) else null
+        LoopSelection.OfMeasures -> if (first != null && last != null) Loop.OfMeasures(first, last) else null
         is LoopSelection.OfSection -> Loop.OfSection(selection.section)
     }
     val canApply = selected != LoopSelection.OfMeasures || chosen != null
@@ -124,7 +128,7 @@ private fun LoopDialog(song: Song, loop: Loop?, onChoose: (Loop?) -> Unit, onDis
                 LoopOption(stringResource(R.string.loop_none), selected == LoopSelection.None) { selected = LoopSelection.None }
                 song.sections.forEachIndexed { index, section ->
                     LoopOption(
-                        stringResource(R.string.loop_section_option, section.name, section.first + 1, section.last + 1),
+                        stringResource(R.string.loop_section_option, section.name, measureRangeEnd(song, section.first), measureRangeEnd(song, section.last)),
                         selected == LoopSelection.OfSection(index),
                     ) { selected = LoopSelection.OfSection(index) }
                 }
@@ -140,6 +144,7 @@ private fun LoopDialog(song: Song, loop: Loop?, onChoose: (Loop?) -> Unit, onDis
                             lastText = it
                         }
                     }
+                    if (song.pickup != null) Text(stringResource(R.string.pickup_is_zero), style = MaterialTheme.typography.bodySmall)
                 }
             }
         },

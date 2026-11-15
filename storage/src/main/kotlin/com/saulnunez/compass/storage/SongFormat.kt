@@ -4,6 +4,7 @@ import com.saulnunez.compass.domain.Song
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.int
@@ -25,6 +26,7 @@ object SongFormat {
         if (formatVersion < 3) document = document.upgradeFromVersion2()
         if (formatVersion < 4) document = document.upgradeFromVersion3()
         if (formatVersion < 5) document = document.upgradeFromVersion4()
+        if (formatVersion < 6) document = document.upgradeFromVersion5()
         return songJson.decodeFromJsonElement(SongDocument.serializer(), document).toSong()
     }
 }
@@ -46,6 +48,10 @@ private fun JsonObject.upgradeFromVersion4(): JsonObject {
     }
     return JsonObject(this + ("tracks" to JsonArray(tracks))).withFormatVersion(5)
 }
+
+/** Version 6 added the Pickup: a version 5 Song's first Measure is full. */
+private fun JsonObject.upgradeFromVersion5(): JsonObject =
+    JsonObject(this + ("pickupSixteenths" to JsonNull)).withFormatVersion(6)
 
 class UnsupportedSongFormatException(val formatVersion: Int) :
     IllegalArgumentException("Song format version $formatVersion is not supported by this version of Compass")

@@ -31,7 +31,7 @@ data class Click(val startMillis: Double, val isCountIn: Boolean)
  * Turns this Song and its [settings] into the [PlaybackTimeline] Playback follows when it starts at
  * Measure [fromMeasure] (0-based): every Tempo scaled by the tempo percentage, all Tracks together
  * except those muted or left out of a solo, the click on every beat when it is on, and a single
- * count-in before the first Measure.
+ * count-in before the first Measure. A Pickup lasts only its own length and clicks only on its beats.
  *
  * With a Loop, Playback stays within the Loop's Measures (starting at its first Measure when
  * [fromMeasure] is outside it), plays to its last Measure and goes straight back to its first,
@@ -56,14 +56,15 @@ fun Song.playbackTimeline(settings: PracticeSettings, fromMeasure: Int = 0, pass
 
     var measureStart = 0.0
     if (settings.countIn) {
-        // One Measure of clicks in the time signature and Tempo Playback starts in.
+        // One full Measure of clicks in the time signature and Tempo Playback starts in, even before a
+        // Pickup, which then comes in straight away, as alphaTab counts in.
         val first = timing(measures[start], settings)
         clicks += first.beatStarts(0.0).map { Click(it, isCountIn = true) }
         measureStart = first.lengthMillis
     }
 
     for (index in played) {
-        val timing = timing(measures[index], settings)
+        val timing = timing(measures[index], settings, length = measureTicks(index))
         timedMeasures += TimedMeasure(index, measureStart, timing.lengthMillis, timing.beatsPerMinute)
         if (settings.click) clicks += timing.beatStarts(measureStart).map { Click(it, isCountIn = false) }
 
@@ -100,19 +101,27 @@ fun Song.playbackTimeline(settings: PracticeSettings, fromMeasure: Int = 0, pass
     return PlaybackTimeline(timedMeasures, notes, clicks)
 }
 
-/** How a Measure's time signature and Tempo play out at the tempo percentage. */
-private class MeasureTiming(val signature: TimeSignature, val beatsPerMinute: Double) {
+/**
+ * How a Measure's time signature and Tempo play out at the tempo percentage, when it lasts [ticks]:
+ * the time signature's full length, or less for a Pickup, which is the last part of its bar.
+ */
+private class MeasureTiming(signature: TimeSignature, val beatsPerMinute: Double, ticks: Int) {
     private val beatTicks = TICKS_PER_WHOLE / signature.beatUnit
-    val lengthMillis = millis(signature.beats * beatTicks)
+    private val beats = signature.beats
+    /** The part of the bar a Pickup leaves out, before it. */
+    private val skipped = beats * beatTicks - ticks
+    val lengthMillis = millis(ticks)
 
     /** How long [ticks] last; Tempos count quarter notes per minute. */
     fun millis(ticks: Int): Double = ticks * MILLIS_PER_MINUTE / (beatsPerMinute * TICKS_PER_QUARTER)
 
-    fun beatStarts(measureStart: Double) = List(signature.beats) { measureStart + millis(it * beatTicks) }
+    /** When each beat of the bar played from [measureStart] starts, leaving out those before a Pickup. */
+    fun beatStarts(measureStart: Double) =
+        (0 until beats).map { it * beatTicks - skipped }.filter { it >= 0 }.map { measureStart + millis(it) }
 }
 
-private fun timing(measure: Measure, settings: PracticeSettings) =
-    MeasureTiming(measure.timeSignature, settings.tempoPercentage.scale(measure.tempo))
+private fun timing(measure: Measure, settings: PracticeSettings, length: Int = measure.timeSignature.ticks) =
+    MeasureTiming(measure.timeSignature, settings.tempoPercentage.scale(measure.tempo), length)
 
 /** Rounding in the millisecond arithmetic, far below any Duration. */
 private const val TIE_TOLERANCE_MILLIS = 0.001

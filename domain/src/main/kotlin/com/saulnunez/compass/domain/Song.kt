@@ -23,6 +23,21 @@ data class Measure(
 )
 
 /**
+ * How long a Song's Pickup lasts, in 16th notes. It must be shorter than the first Measure's time
+ * signature; the Pickup is the last part of that bar, so a one-beat Pickup in 4/4 is beat 4.
+ */
+data class Pickup(val sixteenths: Int) {
+    init {
+        require(sixteenths >= 1) { "A Pickup lasts at least a 16th note" }
+    }
+
+    internal val ticks: Int get() = sixteenths * TICKS_PER_WHOLE / 16
+}
+
+/** How long a full Measure of [this] time signature lasts, in ticks. */
+internal val TimeSignature.ticks: Int get() = TICKS_PER_WHOLE * beats / beatUnit
+
+/**
  * A named, contiguous range of Measures, from Measure [first] to Measure [last] (0-based, both included).
  */
 data class Section(val name: String, val first: Int, val last: Int) {
@@ -55,8 +70,16 @@ data class Song(
     val tracks: List<Track>,
     /** In Measure order; no two share a Measure. */
     val sections: List<Section> = emptyList(),
+    /** Set when the first Measure is a Pickup. */
+    val pickup: Pickup? = null,
 ) {
     init {
+        if (pickup != null) {
+            val first = measures.firstOrNull()
+            require(first != null && pickup.ticks < first.timeSignature.ticks) {
+                "A Pickup must be shorter than the first Measure's time signature"
+            }
+        }
         sections.forEach { section ->
             require(section.last < measures.size) { "Section '${section.name}' reaches past the last Measure" }
         }
@@ -110,16 +133,43 @@ enum class MeasureFill {
     OVERFULL,
 }
 
-/** How much of Measure [measure] (0-based) the Track at index [track] has filled. */
+/** How long Measure [measure] (0-based) lasts in ticks: its time signature, or the Pickup's length. */
+internal fun Song.measureTicks(measure: Int): Int =
+    if (measure == 0 && pickup != null) pickup.ticks else measures[measure].timeSignature.ticks
+
+/** How much of Measure [measure] (0-based) the Track at index [track] has filled; a Pickup is full at its own length. */
 fun Song.measureFill(track: Int, measure: Int): MeasureFill {
     val elements = tracks[track].voice.measures[measure]
     if (elements.isEmpty()) return MeasureFill.UNWRITTEN
     val written = elements.sumOf { it.duration.ticks }
-    val signature = measures[measure].timeSignature
-    val required = TICKS_PER_WHOLE * signature.beats / signature.beatUnit
+    val required = measureTicks(measure)
     return when {
         written < required -> MeasureFill.INCOMPLETE
         written > required -> MeasureFill.OVERFULL
         else -> MeasureFill.FULL
     }
 }
+
+/**
+ * The Rests, longest first, that make up what the Track at index [track] leaves unwritten in the
+ * Pickup, down to a 32nd note; none when there is no Pickup or the Track fills it.
+ */
+fun Song.restsFillingPickup(track: Int): List<Rest> {
+    if (pickup == null) return emptyList()
+    var left = pickup.ticks - tracks[track].voice.measures[0].sumOf { it.duration.ticks }
+    return NoteValue.entries.sortedByDescending { it.ticks }.flatMap { value ->
+        List(left / value.ticks) { Rest(Duration(value)) }.also { left %= value.ticks }
+    }
+}
+
+/**
+ * The number Measure [measure] (0-based) is shown with. Measure 1 is the first full Measure, so a
+ * Pickup, which is not numbered, takes 0 where a number has to be typed.
+ */
+fun Song.measureNumber(measure: Int): Int = if (pickup != null) measure else measure + 1
+
+/** The Measure (0-based) shown as [number] (see [measureNumber]), or null when the Song has none. */
+fun Song.measureNumbered(number: Int): Int? = (if (pickup != null) number else number - 1).takeIf { it in measures.indices }
+
+/** Whether Measure [measure] (0-based) is the Song's Pickup. */
+fun Song.isPickup(measure: Int): Boolean = measure == 0 && pickup != null
