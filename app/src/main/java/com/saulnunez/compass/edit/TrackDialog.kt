@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -19,9 +21,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.saulnunez.compass.R
 import com.saulnunez.compass.domain.Instrument
@@ -35,6 +36,7 @@ import com.saulnunez.compass.library.defaultTrackName
 import com.saulnunez.compass.library.label
 import com.saulnunez.compass.library.pitchLabel
 import com.saulnunez.compass.ui.Dropdown
+import com.saulnunez.compass.ui.IconAndLabel
 
 /** Asks for a new Track's name, Instrument, Tuning and Sound, and hands them to [onAdd]. */
 @Composable
@@ -149,8 +151,12 @@ private fun TrackFields(
                     onSelect = { sound = it },
                 )
                 if (onRemove != null) {
-                    TextButton(onClick = onRemove) {
-                        Text(stringResource(R.string.remove_track), color = MaterialTheme.colorScheme.error)
+                    TextButton(
+                        onClick = onRemove,
+                        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    ) {
+                        IconAndLabel(R.drawable.ic_delete, stringResource(R.string.remove_track))
                     }
                 }
             }
@@ -174,14 +180,12 @@ private fun StringTuning(string: Int, pitch: Pitch, onChange: (Pitch) -> Unit) {
         OutlinedButton(
             onClick = { onChange(Pitch(pitch.midi - 1)) },
             enabled = pitch.midi > LOWEST_OPEN_STRING,
-            modifier = Modifier.semantics { contentDescription = lower },
-        ) { Text("−") }
+        ) { Icon(painterResource(R.drawable.ic_remove), contentDescription = lower) }
         Text(pitchLabel(pitch), style = MaterialTheme.typography.bodyLarge)
         OutlinedButton(
             onClick = { onChange(Pitch(pitch.midi + 1)) },
             enabled = pitch.midi < HIGHEST_OPEN_STRING,
-            modifier = Modifier.semantics { contentDescription = higher },
-        ) { Text("+") }
+        ) { Icon(painterResource(R.drawable.ic_add), contentDescription = higher) }
     }
 }
 

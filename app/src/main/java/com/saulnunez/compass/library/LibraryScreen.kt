@@ -25,6 +25,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -40,6 +41,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -48,6 +50,8 @@ import com.saulnunez.compass.domain.Library
 import com.saulnunez.compass.domain.LibraryEntry
 import com.saulnunez.compass.domain.LibraryOrder
 import com.saulnunez.compass.domain.SongId
+import com.saulnunez.compass.ui.IconAction
+import com.saulnunez.compass.ui.LabeledIconAction
 import com.saulnunez.compass.ui.theme.CompassTheme
 
 /**
@@ -76,13 +80,18 @@ fun LibraryScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.library_title)) },
                 actions = {
-                    TextButton(onClick = onImportSong) { Text(stringResource(R.string.song_file_import)) }
+                    // Neither icon says on its own what it does, so both keep their labels.
+                    LabeledIconAction(R.drawable.ic_file_open, stringResource(R.string.song_file_import), onImportSong)
                     BackupMenu(onBackUp = onBackUp, onRestore = onRestore)
                 },
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(onClick = onNewSong) { Text(stringResource(R.string.new_song)) }
+            ExtendedFloatingActionButton(
+                text = { Text(stringResource(R.string.new_song)) },
+                icon = { Icon(painterResource(R.drawable.ic_add), contentDescription = null) },
+                onClick = onNewSong,
+            )
         },
         contentWindowInsets = WindowInsets.safeDrawing,
     ) { innerPadding ->
@@ -163,10 +172,11 @@ fun LibraryScreen(
 private fun BackupMenu(onBackUp: () -> Unit, onRestore: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        TextButton(onClick = { expanded = true }) { Text(stringResource(R.string.backup_menu)) }
+        LabeledIconAction(R.drawable.ic_backup, stringResource(R.string.backup_menu), onClick = { expanded = true })
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.backup_create)) },
+                leadingIcon = { Icon(painterResource(R.drawable.ic_backup), contentDescription = null) },
                 onClick = {
                     expanded = false
                     onBackUp()
@@ -174,6 +184,7 @@ private fun BackupMenu(onBackUp: () -> Unit, onRestore: () -> Unit) {
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.backup_restore)) },
+                leadingIcon = { Icon(painterResource(R.drawable.ic_settings_backup_restore), contentDescription = null) },
                 onClick = {
                     expanded = false
                     onRestore()
@@ -190,8 +201,8 @@ private fun SongRow(entry: LibraryEntry, onOpen: () -> Unit, onSendSongFile: () 
         supportingContent = entry.artist.takeIf { it.isNotBlank() }?.let { artist -> { Text(artist) } },
         trailingContent = {
             Row {
-                TextButton(onClick = onSendSongFile) { Text(stringResource(R.string.send_song_file)) }
-                TextButton(onClick = onDelete) { Text(stringResource(R.string.delete)) }
+                IconAction(R.drawable.ic_share, stringResource(R.string.send_song_file), onSendSongFile)
+                IconAction(R.drawable.ic_delete, stringResource(R.string.delete), onDelete)
             }
         },
         modifier = Modifier.clickable(onClick = onOpen),

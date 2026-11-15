@@ -1,5 +1,6 @@
 package com.saulnunez.compass.edit
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -25,9 +26,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -39,11 +42,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.saulnunez.compass.R
@@ -69,6 +72,9 @@ import com.saulnunez.compass.ui.AdaptivePanes
 import com.saulnunez.compass.ui.BEATS_RANGE
 import com.saulnunez.compass.ui.BEAT_UNITS
 import com.saulnunez.compass.ui.Dropdown
+import com.saulnunez.compass.ui.IconAction
+import com.saulnunez.compass.ui.IconAndLabel
+import com.saulnunez.compass.ui.LabeledIconAction
 import com.saulnunez.compass.ui.NumberField
 import com.saulnunez.compass.ui.TEMPO_RANGE
 import com.saulnunez.compass.domain.Duration
@@ -117,15 +123,12 @@ fun EditScreen(
                         Text(stringResource(R.string.edit_mode), style = MaterialTheme.typography.bodySmall)
                     }
                 },
-                navigationIcon = { TextButton(onClick = onDone) { Text(stringResource(R.string.leave_edit_mode)) } },
+                // A check mark alone could read as "apply", so leaving Edit mode keeps its label.
+                navigationIcon = { LabeledIconAction(R.drawable.ic_check, stringResource(R.string.leave_edit_mode), onDone) },
                 actions = {
                     PlayFromCursorButton(player, session)
-                    TextButton(onClick = { onSessionChange(session.undo()) }, enabled = session.canUndo) {
-                        Text(stringResource(R.string.undo))
-                    }
-                    TextButton(onClick = { onSessionChange(session.redo()) }, enabled = session.canRedo) {
-                        Text(stringResource(R.string.redo))
-                    }
+                    IconAction(R.drawable.ic_undo, stringResource(R.string.undo), { onSessionChange(session.undo()) }, enabled = session.canUndo)
+                    IconAction(R.drawable.ic_redo, stringResource(R.string.redo), { onSessionChange(session.redo()) }, enabled = session.canRedo)
                 },
             )
         },
@@ -208,8 +211,9 @@ private fun TrackTools(session: EditSession, onSessionChange: (EditSession) -> U
             onSelect = { onSessionChange(session.editTrack(it)) },
             modifier = Modifier.weight(1f),
         )
-        OutlinedButton(onClick = { changing = true }) { Text(stringResource(R.string.track_settings)) }
-        OutlinedButton(onClick = { adding = true }) { Text(stringResource(R.string.add_track)) }
+        // Beside the Track picker, a gear and a plus say on their own what they do.
+        IconAction(R.drawable.ic_settings, stringResource(R.string.track_settings), { changing = true })
+        IconAction(R.drawable.ic_add, stringResource(R.string.add_track), { adding = true })
     }
     if (adding) {
         NewTrackDialog(
@@ -243,14 +247,12 @@ private fun TrackTools(session: EditSession, onSessionChange: (EditSession) -> U
 /** Plays the Song from the cursor, or stops Playback and goes back to where it started. */
 @Composable
 private fun PlayFromCursorButton(player: NotationPlayer, session: EditSession) {
-    val playDescription = stringResource(R.string.playback_play_from_cursor)
-    TextButton(
+    IconAction(
+        icon = if (player.isPlaying) R.drawable.ic_stop else R.drawable.ic_play_arrow,
+        label = stringResource(if (player.isPlaying) R.string.playback_stop else R.string.playback_play_from_cursor),
         onClick = { if (player.isPlaying) player.stop() else player.playFrom(session.cursor, session.track) },
         enabled = player.isReady,
-        modifier = Modifier.semantics { if (!player.isPlaying) contentDescription = playDescription },
-    ) {
-        Text(stringResource(if (player.isPlaying) R.string.playback_stop else R.string.playback_play))
-    }
+    )
 }
 
 /** Every Measure by number, the cursor's highlighted; incomplete or overfull ones flagged. */
@@ -311,14 +313,14 @@ private fun MeasureTools(session: EditSession, onSessionChange: (EditSession) ->
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
     ) {
-        OutlinedButton(onClick = { onSessionChange(session.insertMeasureBefore()) }, enabled = session.canInsertMeasureBefore) {
-            Text(stringResource(R.string.insert_measure_before))
+        ToolButton(R.drawable.ic_add_column_left, stringResource(R.string.insert_measure_before), enabled = session.canInsertMeasureBefore) {
+            onSessionChange(session.insertMeasureBefore())
         }
-        OutlinedButton(onClick = { onSessionChange(session.insertMeasureAfter()) }) {
-            Text(stringResource(R.string.insert_measure_after))
+        ToolButton(R.drawable.ic_add_column_right, stringResource(R.string.insert_measure_after)) {
+            onSessionChange(session.insertMeasureAfter())
         }
-        OutlinedButton(onClick = { onSessionChange(session.deleteMeasure()) }, enabled = session.canDeleteMeasure) {
-            Text(stringResource(R.string.delete_measure))
+        ToolButton(R.drawable.ic_delete, stringResource(R.string.delete_measure), enabled = session.canDeleteMeasure) {
+            onSessionChange(session.deleteMeasure())
         }
         val summary = stringResource(
             R.string.measure_settings_summary,
@@ -328,16 +330,17 @@ private fun MeasureTools(session: EditSession, onSessionChange: (EditSession) ->
             measure.tempo.beatsPerMinute,
         )
         val description = stringResource(R.string.change_measure_settings, summary)
-        OutlinedButton(
-            onClick = { editingSettings = true },
+        ToolButton(
+            R.drawable.ic_tune,
+            summary,
             modifier = Modifier.semantics { contentDescription = description },
-        ) { Text(summary) }
+        ) { editingSettings = true }
         if (session.cursor.measure == 0) {
             OutlinedButton(onClick = { editingPickup = true }) {
                 Text(stringResource(if (pickup == null) R.string.make_pickup else R.string.change_pickup))
             }
             if (pickup != null) {
-                OutlinedButton(onClick = { onSessionChange(session.removePickup()) }) { Text(stringResource(R.string.remove_pickup)) }
+                ToolButton(R.drawable.ic_delete, stringResource(R.string.remove_pickup)) { onSessionChange(session.removePickup()) }
             }
         }
     }
@@ -481,17 +484,18 @@ private fun SectionTools(session: EditSession, onSessionChange: (EditSession) ->
             style = MaterialTheme.typography.labelMedium,
         )
         if (section == null) {
-            OutlinedButton(onClick = { addingSection = true }) { Text(stringResource(R.string.new_section)) }
+            ToolButton(R.drawable.ic_add, stringResource(R.string.new_section)) { addingSection = true }
         } else {
-            OutlinedButton(onClick = { editingSection = true }) { Text(stringResource(R.string.edit_section)) }
-            OutlinedButton(onClick = { onSessionChange(session.copySection()) }) { Text(stringResource(R.string.copy_section)) }
+            ToolButton(R.drawable.ic_edit, stringResource(R.string.edit_section)) { editingSection = true }
+            ToolButton(R.drawable.ic_content_copy, stringResource(R.string.copy_section)) { onSessionChange(session.copySection()) }
         }
         val pasteDescription = stringResource(R.string.paste_measures_description, measureLabel(session.song, session.cursor.measure))
-        OutlinedButton(
-            onClick = { onSessionChange(session.pasteMeasures()) },
+        ToolButton(
+            R.drawable.ic_content_paste,
+            stringResource(R.string.paste_measures),
             enabled = session.canPaste,
             modifier = Modifier.semantics { contentDescription = pasteDescription },
-        ) { Text(stringResource(R.string.paste_measures)) }
+        ) { onSessionChange(session.pasteMeasures()) }
     }
     if (addingSection) {
         SectionDialog(
@@ -585,7 +589,9 @@ private fun SectionDialog(
                     )
                 }
                 if (onRemove != null) {
-                    TextButton(onClick = onRemove) { Text(stringResource(R.string.remove_section)) }
+                    TextButton(onClick = onRemove, contentPadding = ButtonDefaults.TextButtonWithIconContentPadding) {
+                        IconAndLabel(R.drawable.ic_delete, stringResource(R.string.remove_section))
+                    }
                 }
             }
         },
@@ -681,8 +687,8 @@ private fun DurationBar(session: EditSession, onSessionChange: (EditSession) -> 
                 label = { Text(stringResource(R.string.triplet)) },
             )
             OutlinedButton(onClick = { onSessionChange(session.writeRest()) }) { Text(stringResource(R.string.rest)) }
-            OutlinedButton(onClick = { onSessionChange(session.delete()) }, enabled = session.elementAtCursor != null) {
-                Text(stringResource(R.string.delete))
+            ToolButton(R.drawable.ic_backspace, stringResource(R.string.delete), enabled = session.elementAtCursor != null) {
+                onSessionChange(session.delete())
             }
         }
     }
@@ -724,12 +730,12 @@ private fun CursorPad(session: EditSession, onSessionChange: (EditSession) -> Un
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
-        PadButton("«", stringResource(R.string.cursor_previous_measure)) { onSessionChange(session.moveToPreviousMeasure()) }
-        PadButton("‹", stringResource(R.string.cursor_previous_beat)) { onSessionChange(session.moveToPreviousBeat()) }
-        PadButton("↑", stringResource(R.string.cursor_string_above)) { onSessionChange(session.moveToStringAbove()) }
-        PadButton("↓", stringResource(R.string.cursor_string_below)) { onSessionChange(session.moveToStringBelow()) }
-        PadButton("›", stringResource(R.string.cursor_next_beat)) { onSessionChange(session.moveToNextBeat()) }
-        PadButton("»", stringResource(R.string.cursor_next_measure)) { onSessionChange(session.moveToNextMeasure()) }
+        PadButton(R.drawable.ic_keyboard_double_arrow_left, stringResource(R.string.cursor_previous_measure)) { onSessionChange(session.moveToPreviousMeasure()) }
+        PadButton(R.drawable.ic_chevron_left, stringResource(R.string.cursor_previous_beat)) { onSessionChange(session.moveToPreviousBeat()) }
+        PadButton(R.drawable.ic_arrow_upward, stringResource(R.string.cursor_string_above)) { onSessionChange(session.moveToStringAbove()) }
+        PadButton(R.drawable.ic_arrow_downward, stringResource(R.string.cursor_string_below)) { onSessionChange(session.moveToStringBelow()) }
+        PadButton(R.drawable.ic_chevron_right, stringResource(R.string.cursor_next_beat)) { onSessionChange(session.moveToNextBeat()) }
+        PadButton(R.drawable.ic_keyboard_double_arrow_right, stringResource(R.string.cursor_next_measure)) { onSessionChange(session.moveToNextMeasure()) }
     }
 }
 
@@ -757,13 +763,31 @@ private fun NumberPad(onDigit: (Int) -> Unit) {
     }
 }
 
+/** A cursor move: its arrow says what it does, so [description] is only read out. */
 @Composable
-private fun RowScope.PadButton(symbol: String, description: String, onClick: () -> Unit) {
+private fun RowScope.PadButton(@DrawableRes icon: Int, description: String, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
         contentPadding = PaddingValues(0.dp),
-        modifier = Modifier.weight(1f).semantics { contentDescription = description },
-    ) { Text(symbol, textAlign = TextAlign.Center) }
+        modifier = Modifier.weight(1f),
+    ) { Icon(painterResource(icon), contentDescription = description) }
+}
+
+/** An edit tool: [icon] alone doesn't say what it does to the Song, so [label] stays beside it. */
+@Composable
+private fun ToolButton(
+    @DrawableRes icon: Int,
+    label: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+        modifier = modifier,
+    ) { IconAndLabel(icon, label) }
 }
 
 private fun NoteValue.symbol(): String = when (this) {
