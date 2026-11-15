@@ -55,10 +55,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.saulnunez.compass.domain.KeySignature
 import com.saulnunez.compass.domain.Measure
+import com.saulnunez.compass.domain.Pickup
+import com.saulnunez.compass.domain.Song
+import com.saulnunez.compass.domain.isPickup
+import com.saulnunez.compass.domain.measureNumber
+import com.saulnunez.compass.domain.measureNumbered
 import com.saulnunez.compass.domain.Tempo
 import com.saulnunez.compass.domain.TimeSignature
 import com.saulnunez.compass.library.keySignatureLabel
 import com.saulnunez.compass.library.label
+import com.saulnunez.compass.library.measureLabel
 import com.saulnunez.compass.ui.AdaptivePanes
 import com.saulnunez.compass.ui.BEATS_RANGE
 import com.saulnunez.compass.ui.BEAT_UNITS
@@ -260,7 +266,8 @@ private fun MeasureStrip(session: EditSession, onSessionChange: (EditSession) ->
         itemsIndexed(session.song.measures) { index, _ ->
             val fill = session.song.measureFill(track = session.track, measure = index)
             val flagged = fill == MeasureFill.INCOMPLETE || fill == MeasureFill.OVERFULL
-            val description = measureDescription(index + 1, fill)
+            val description = measureDescription(session.song, index, fill)
+            val shown = if (session.song.isPickup(index)) stringResource(R.string.pickup) else "${session.song.measureNumber(index)}"
             // A Section's name leads its first Measure.
             val sectionName = session.song.sections.firstOrNull { it.first == index }?.let { "${it.name} · " } ?: ""
             FilterChip(
@@ -268,7 +275,7 @@ private fun MeasureStrip(session: EditSession, onSessionChange: (EditSession) ->
                 onClick = { onSessionChange(session.moveToMeasure(index)) },
                 label = {
                     Text(
-                        sectionName + if (flagged) "${index + 1} !" else "${index + 1}",
+                        sectionName + if (flagged) "$shown !" else shown,
                         color = if (flagged) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                     )
                 },
@@ -278,27 +285,33 @@ private fun MeasureStrip(session: EditSession, onSessionChange: (EditSession) ->
     }
 }
 
+/** Measure [measure] (0-based) of [song] by name, saying when it is incomplete or overfull. */
 @Composable
-private fun measureDescription(number: Int, fill: MeasureFill): String = when (fill) {
-    MeasureFill.INCOMPLETE -> stringResource(R.string.measure_incomplete, number)
-    MeasureFill.OVERFULL -> stringResource(R.string.measure_overfull, number)
-    MeasureFill.UNWRITTEN, MeasureFill.FULL -> stringResource(R.string.measure_number, number)
+private fun measureDescription(song: Song, measure: Int, fill: MeasureFill): String {
+    val number = song.measureNumber(measure)
+    return when {
+        fill == MeasureFill.INCOMPLETE -> if (song.isPickup(measure)) stringResource(R.string.pickup_incomplete) else stringResource(R.string.measure_incomplete, number)
+        fill == MeasureFill.OVERFULL -> if (song.isPickup(measure)) stringResource(R.string.pickup_overfull) else stringResource(R.string.measure_overfull, number)
+        else -> measureLabel(song, measure)
+    }
 }
 
 /**
- * Inserts and deletes Measures (in every Track) and changes the time signature, key signature
- * and Tempo from the cursor's Measure on.
+ * Inserts and deletes Measures (in every Track), changes the time signature, key signature and
+ * Tempo from the cursor's Measure on, and on the first Measure makes, changes or removes a Pickup.
  */
 @Composable
 private fun MeasureTools(session: EditSession, onSessionChange: (EditSession) -> Unit) {
     var editingSettings by rememberSaveable { mutableStateOf(false) }
+    var editingPickup by rememberSaveable { mutableStateOf(false) }
     val measure = session.measureAtCursor
+    val pickup = session.song.pickup
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
     ) {
-        OutlinedButton(onClick = { onSessionChange(session.insertMeasureBefore()) }) {
+        OutlinedButton(onClick = { onSessionChange(session.insertMeasureBefore()) }, enabled = session.canInsertMeasureBefore) {
             Text(stringResource(R.string.insert_measure_before))
         }
         OutlinedButton(onClick = { onSessionChange(session.insertMeasureAfter()) }) {
@@ -319,11 +332,32 @@ private fun MeasureTools(session: EditSession, onSessionChange: (EditSession) ->
             onClick = { editingSettings = true },
             modifier = Modifier.semantics { contentDescription = description },
         ) { Text(summary) }
+        if (session.cursor.measure == 0) {
+            OutlinedButton(onClick = { editingPickup = true }) {
+                Text(stringResource(if (pickup == null) R.string.make_pickup else R.string.change_pickup))
+            }
+            if (pickup != null) {
+                OutlinedButton(onClick = { onSessionChange(session.removePickup()) }) { Text(stringResource(R.string.remove_pickup)) }
+            }
+        }
+    }
+    if (editingPickup) {
+        PickupDialog(
+            timeSignature = session.song.measures.first().timeSignature,
+            current = pickup,
+            canMake = session::canMakePickup,
+            onApply = {
+                editingPickup = false
+                onSessionChange(session.makePickup(it))
+            },
+            onDismiss = { editingPickup = false },
+        )
     }
     if (editingSettings) {
         MeasureSettingsDialog(
-            measureNumber = session.cursor.measure + 1,
+            title = measureLabel(session.song, session.cursor.measure),
             current = measure,
+            canApply = session::canChangeMeasure,
             onApply = {
                 editingSettings = false
                 onSessionChange(session.changeMeasure(it))
@@ -333,9 +367,51 @@ private fun MeasureTools(session: EditSession, onSessionChange: (EditSession) ->
     }
 }
 
-/** Asks for a Measure's time signature, key signature and Tempo, starting from [current]. */
+/**
+ * Asks how long the first Measure's Pickup lasts, from a 16th note up to just short of
+ * [timeSignature], starting from [current].
+ */
 @Composable
-private fun MeasureSettingsDialog(measureNumber: Int, current: Measure, onApply: (Measure) -> Unit, onDismiss: () -> Unit) {
+private fun PickupDialog(timeSignature: TimeSignature, current: Pickup?, canMake: (Pickup) -> Boolean, onApply: (Pickup) -> Unit, onDismiss: () -> Unit) {
+    val options = (1 until SIXTEENTHS_PER_WHOLE * timeSignature.beats / timeSignature.beatUnit).map(::Pickup).filter(canMake)
+    var selected by rememberSaveable { mutableIntStateOf(current?.sixteenths ?: (SIXTEENTHS_PER_WHOLE / timeSignature.beatUnit)) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.pickup_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.pickup_hint), style = MaterialTheme.typography.bodySmall)
+                Dropdown(
+                    label = stringResource(R.string.field_pickup_length),
+                    options = options,
+                    selected = Pickup(selected),
+                    optionLabel = { stringResource(R.string.pickup_length_option, beatsIn(it, timeSignature), timeSignature.beats) },
+                    onSelect = { selected = it.sixteenths },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = canMake(Pickup(selected)), onClick = { onApply(Pickup(selected)) }) { Text(stringResource(R.string.apply)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+/** How many beats of [timeSignature] [pickup] lasts, e.g. "1" or "1.5". */
+private fun beatsIn(pickup: Pickup, timeSignature: TimeSignature): String {
+    val beats = pickup.sixteenths * timeSignature.beatUnit / SIXTEENTHS_PER_WHOLE.toDouble()
+    return if (beats % 1.0 == 0.0) beats.toInt().toString() else beats.toString().trimEnd('0')
+}
+
+private const val SIXTEENTHS_PER_WHOLE = 16
+
+/**
+ * Asks for a Measure's time signature, key signature and Tempo, starting from [current]; settings
+ * [canApply] refuses (a time signature a Pickup would fill) can't be applied.
+ */
+@Composable
+private fun MeasureSettingsDialog(title: String, current: Measure, canApply: (Measure) -> Boolean, onApply: (Measure) -> Unit, onDismiss: () -> Unit) {
     var tempoText by rememberSaveable { mutableStateOf(current.tempo.beatsPerMinute.toString()) }
     var beatsText by rememberSaveable { mutableStateOf(current.timeSignature.beats.toString()) }
     var beatUnit by rememberSaveable { mutableIntStateOf(current.timeSignature.beatUnit) }
@@ -343,10 +419,12 @@ private fun MeasureSettingsDialog(measureNumber: Int, current: Measure, onApply:
 
     val tempo = tempoText.toIntOrNull()?.takeIf { it in TEMPO_RANGE }
     val beats = beatsText.toIntOrNull()?.takeIf { it in BEATS_RANGE }
+    val chosen = if (tempo != null && beats != null) Measure(TimeSignature(beats, beatUnit), KeySignature.ALL[keyIndex], Tempo(tempo)) else null
+    val refused = chosen != null && !canApply(chosen)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.measure_settings_title, measureNumber)) },
+        title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.measure_settings_hint), style = MaterialTheme.typography.bodySmall)
@@ -369,12 +447,15 @@ private fun MeasureSettingsDialog(measureNumber: Int, current: Measure, onApply:
                     optionLabel = { keySignatureLabel(it) },
                     onSelect = { keyIndex = KeySignature.ALL.indexOf(it) },
                 )
+                if (refused) {
+                    Text(stringResource(R.string.pickup_too_long), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
             }
         },
         confirmButton = {
             TextButton(
-                enabled = tempo != null && beats != null,
-                onClick = { onApply(Measure(TimeSignature(beats!!, beatUnit), KeySignature.ALL[keyIndex], Tempo(tempo!!))) },
+                enabled = chosen != null && !refused,
+                onClick = { onApply(chosen!!) },
             ) { Text(stringResource(R.string.apply)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
@@ -390,7 +471,6 @@ private fun SectionTools(session: EditSession, onSessionChange: (EditSession) ->
     var addingSection by rememberSaveable { mutableStateOf(false) }
     var editingSection by rememberSaveable { mutableStateOf(false) }
     val section = session.sectionAtCursor
-    val measureNumber = session.cursor.measure + 1
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -406,7 +486,7 @@ private fun SectionTools(session: EditSession, onSessionChange: (EditSession) ->
             OutlinedButton(onClick = { editingSection = true }) { Text(stringResource(R.string.edit_section)) }
             OutlinedButton(onClick = { onSessionChange(session.copySection()) }) { Text(stringResource(R.string.copy_section)) }
         }
-        val pasteDescription = stringResource(R.string.paste_measures_description, measureNumber)
+        val pasteDescription = stringResource(R.string.paste_measures_description, measureLabel(session.song, session.cursor.measure))
         OutlinedButton(
             onClick = { onSessionChange(session.pasteMeasures()) },
             enabled = session.canPaste,
@@ -417,9 +497,9 @@ private fun SectionTools(session: EditSession, onSessionChange: (EditSession) ->
         SectionDialog(
             title = stringResource(R.string.new_section_title),
             initialName = "",
-            initialFirst = measureNumber,
-            initialLast = measureNumber,
-            measureCount = session.song.measures.size,
+            initialFirst = session.cursor.measure,
+            initialLast = session.cursor.measure,
+            song = session.song,
             canPlace = session::canAddSection,
             onApply = { name, first, last ->
                 addingSection = false
@@ -432,9 +512,9 @@ private fun SectionTools(session: EditSession, onSessionChange: (EditSession) ->
         SectionDialog(
             title = stringResource(R.string.edit_section_title, section.name),
             initialName = section.name,
-            initialFirst = section.first + 1,
-            initialLast = section.last + 1,
-            measureCount = session.song.measures.size,
+            initialFirst = section.first,
+            initialLast = section.last,
+            song = session.song,
             canPlace = session::canResizeSection,
             onApply = { name, first, last ->
                 editingSection = false
@@ -450,8 +530,9 @@ private fun SectionTools(session: EditSession, onSessionChange: (EditSession) ->
 }
 
 /**
- * Asks for a Section's name and its first and last Measure (numbered from 1 here; [onApply] and
- * [canPlace] take them 0-based). [onRemove], when given, offers to remove the Section.
+ * Asks for a Section's name and its first and last Measure of [song], starting from [initialFirst]
+ * to [initialLast]. They are typed as the numbers Measures are shown with (0 for a Pickup); they
+ * and [onApply] and [canPlace] are 0-based. [onRemove], when given, offers to remove the Section.
  */
 @Composable
 private fun SectionDialog(
@@ -459,19 +540,19 @@ private fun SectionDialog(
     initialName: String,
     initialFirst: Int,
     initialLast: Int,
-    measureCount: Int,
+    song: Song,
     canPlace: (first: Int, last: Int) -> Boolean,
     onApply: (name: String, first: Int, last: Int) -> Unit,
     onDismiss: () -> Unit,
     onRemove: (() -> Unit)? = null,
 ) {
     var name by rememberSaveable { mutableStateOf(initialName) }
-    var firstText by rememberSaveable { mutableStateOf(initialFirst.toString()) }
-    var lastText by rememberSaveable { mutableStateOf(initialLast.toString()) }
+    var firstText by rememberSaveable { mutableStateOf(song.measureNumber(initialFirst).toString()) }
+    var lastText by rememberSaveable { mutableStateOf(song.measureNumber(initialLast).toString()) }
 
-    val first = firstText.toIntOrNull()?.takeIf { it in 1..measureCount }
-    val last = lastText.toIntOrNull()?.takeIf { it in 1..measureCount && (first == null || it >= first) }
-    val overlaps = first != null && last != null && !canPlace(first - 1, last - 1)
+    val first = firstText.toIntOrNull()?.let(song::measureNumbered)
+    val last = lastText.toIntOrNull()?.let(song::measureNumbered)?.takeIf { first == null || it >= first }
+    val overlaps = first != null && last != null && !canPlace(first, last)
     val canApply = name.isNotBlank() && first != null && last != null && !overlaps
 
     AlertDialog(
@@ -495,6 +576,7 @@ private fun SectionDialog(
                         lastText = it
                     }
                 }
+                if (song.pickup != null) Text(stringResource(R.string.pickup_is_zero), style = MaterialTheme.typography.bodySmall)
                 if (overlaps) {
                     Text(
                         stringResource(R.string.section_overlaps),
@@ -508,7 +590,7 @@ private fun SectionDialog(
             }
         },
         confirmButton = {
-            TextButton(enabled = canApply, onClick = { onApply(name, first!! - 1, last!! - 1) }) {
+            TextButton(enabled = canApply, onClick = { onApply(name, first!!, last!!) }) {
                 Text(stringResource(R.string.apply))
             }
         },
@@ -532,7 +614,7 @@ private fun MeasureEditor(session: EditSession) {
         } else {
             MaterialTheme.colorScheme.onSurfaceVariant
         }
-        Text(measureDescription(measure + 1, fill), color = flagColor, style = MaterialTheme.typography.labelMedium)
+        Text(measureDescription(session.song, measure, fill), color = flagColor, style = MaterialTheme.typography.labelMedium)
         Row(Modifier.horizontalScroll(rememberScrollState())) {
             for (beat in 0 until columns) {
                 val element = elements.getOrNull(beat)

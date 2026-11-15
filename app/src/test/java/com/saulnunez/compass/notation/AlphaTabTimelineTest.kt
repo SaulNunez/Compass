@@ -5,6 +5,7 @@ import com.saulnunez.compass.domain.KeySignature
 import com.saulnunez.compass.domain.Loop
 import com.saulnunez.compass.domain.Measure
 import com.saulnunez.compass.domain.Note
+import com.saulnunez.compass.domain.Pickup
 import com.saulnunez.compass.domain.PlaybackTimeline
 import com.saulnunez.compass.domain.PracticeSettings
 import com.saulnunez.compass.domain.Rest
@@ -156,6 +157,86 @@ class AlphaTabTimelineTest {
 
         assertEquals(3000.0, timeline.measures.first().startMillis, 0.0)
         assertEquals(2000.0, player.countInMillis, TOLERANCE_MILLIS)
+    }
+
+    /**
+     * A 4/4 Song at 120 BPM whose first Measure is a one-beat Pickup: the guitar plays it, the bass
+     * leaves it empty, and both play the Measure after.
+     */
+    private val withPickup = Song(
+        id = SongId("pickup"),
+        title = "Pickup",
+        artist = "",
+        measures = List(2) { Measure(TimeSignature(4, 4), KeySignature.C_MAJOR, Tempo(120)) },
+        tracks = listOf(
+            guitar.copy(voice = Voice(listOf(listOf(Note(1, 3, Duration.QUARTER)), listOf(Note(1, 5, Duration.WHOLE))))),
+            bass.copy(voice = Voice(listOf(emptyList(), listOf(Note(4, 0, Duration.HALF), Note(4, 3, Duration.HALF))))),
+        ),
+        pickup = Pickup(sixteenths = 4),
+    )
+
+    @Test
+    fun `a Pickup lasts only its own length, so the Measure after it starts one beat in`() {
+        val settings = PracticeSettings()
+        val timeline = withPickup.playbackTimeline(settings)
+
+        val player = HeadlessPlayer(withPickup, settings).playFrom(measure = 0, millis = timeline.end())
+
+        // One beat at 120 BPM.
+        assertEquals(500.0, timeline.measures[1].startMillis, 0.0)
+        assertPlaysAsTimeline(timeline, player, timeline.end())
+    }
+
+    @Test
+    fun `a Track that leaves the Pickup short plays its Notes at the end of it`() {
+        val shortBass = withPickup.copy(
+            tracks = listOf(withPickup.tracks[0], bass.copy(voice = Voice(listOf(listOf(Note(4, 5, Duration.EIGHTH)), withPickup.tracks[1].voice.measures[1])))),
+        )
+        val settings = PracticeSettings()
+        val timeline = shortBass.playbackTimeline(settings)
+
+        val player = HeadlessPlayer(shortBass, settings).playFrom(measure = 0, millis = timeline.end())
+
+        // The eighth Note is the second half of the one-beat Pickup, at 120 BPM.
+        assertEquals(250.0, timeline.notes.single { it.track == 1 && it.measure == 0 }.startMillis, 0.0)
+        assertPlaysAsTimeline(timeline, player, timeline.end())
+    }
+
+    @Test
+    fun `a Track that overfills the Pickup still plays every Note`() {
+        val overfull = withPickup.copy(
+            tracks = listOf(guitar.copy(voice = Voice(listOf(listOf(Note(1, 3, Duration.WHOLE)), withPickup.tracks[0].voice.measures[1]))), withPickup.tracks[1]),
+        )
+        val settings = PracticeSettings()
+        val timeline = overfull.playbackTimeline(settings)
+
+        val player = HeadlessPlayer(overfull, settings).playFrom(measure = 0, millis = 10_000.0)
+
+        // alphaTab's Pickup grows to hold the whole Note, so only the Notes, not their times, agree.
+        assertEquals(timeline.notes.size, player.notes.filterNot(player::isMuted).size)
+    }
+
+    @Test
+    fun `a Loop from the Pickup goes straight back to it each time`() {
+        val settings = PracticeSettings(loop = Loop.OfMeasures(first = 0, last = 1))
+        val timeline = withPickup.playbackTimeline(settings, passes = 3)
+
+        val player = HeadlessPlayer(withPickup, settings).playFrom(measure = 0, millis = timeline.end())
+
+        assertPlaysAsTimeline(timeline, player, timeline.end())
+    }
+
+    @Test
+    fun `the count-in before a Pickup is one full Measure, and the Pickup comes in straight after`() {
+        val settings = PracticeSettings(countIn = true)
+        val timeline = withPickup.playbackTimeline(settings)
+
+        val player = HeadlessPlayer(withPickup, settings).playFrom(measure = 0, millis = timeline.end())
+
+        // Four beats at 120 BPM.
+        assertEquals(2000.0, timeline.measures.first().startMillis, 0.0)
+        assertEquals(timeline.measures.first().startMillis, player.countInMillis, TOLERANCE_MILLIS)
+        assertPlaysAsTimeline(timeline, player, timeline.end())
     }
 
     private companion object {

@@ -139,9 +139,14 @@ class EditSession private constructor(
         return apply(DeleteElement(track, cursor.measure, cursor.beat)).let { it.moveTo(it.cursor) }
     }
 
+    /** Whether a Measure can go in before the cursor's: nothing goes before a Pickup. */
+    val canInsertMeasureBefore: Boolean get() = !(cursor.measure == 0 && song.pickup != null)
+
     /** Inserts an empty Measure before the cursor's Measure, in every Track, and moves the cursor into it. */
-    fun insertMeasureBefore(): EditSession =
-        apply(InsertMeasure(cursor.measure)).moveTo(cursor.copy(beat = 0))
+    fun insertMeasureBefore(): EditSession {
+        if (!canInsertMeasureBefore) return this
+        return apply(InsertMeasure(cursor.measure)).moveTo(cursor.copy(beat = 0))
+    }
 
     /** Inserts an empty Measure after the cursor's Measure, in every Track, and moves the cursor into it. */
     fun insertMeasureAfter(): EditSession =
@@ -157,18 +162,40 @@ class EditSession private constructor(
         return deleted.moveTo(cursor.copy(measure = cursor.measure.coerceAtMost(deleted.song.measures.lastIndex), beat = 0))
     }
 
+    /** Whether the first Measure can be a Pickup lasting [pickup]: it must be shorter than its time signature. */
+    fun canMakePickup(pickup: Pickup): Boolean = pickup.ticks < song.measures.first().timeSignature.ticks
+
+    /** Makes the first Measure a Pickup lasting [pickup], or changes its length; does nothing when it can't be. */
+    fun makePickup(pickup: Pickup): EditSession {
+        if (!canMakePickup(pickup)) return this
+        // A shorter Pickup can fill the Measure, taking away the free beat the cursor was on.
+        return apply(MakePickup(pickup)).let { made -> made.moveTo(cursor.copy(beat = cursor.beat.coerceAtMost(made.lastBeat(cursor.measure)))) }
+    }
+
+    /** Makes the first Measure full length again, keeping what is written in it. */
+    fun removePickup(): EditSession = apply(RemovePickup)
+
     /** The time signature, key signature and Tempo of the cursor's Measure. */
     val measureAtCursor: Measure get() = song.measures[cursor.measure]
 
     /**
      * Gives the cursor's Measure the time signature, key signature and Tempo of [settings], as one
      * edit; each changed setting lasts until the next change of that setting already written.
+     * Does nothing when [canChangeMeasure] says it can't.
      */
-    fun changeMeasure(settings: Measure): EditSession =
-        apply(ChangeMeasure(cursor.measure, settings)).let { changed ->
+    fun changeMeasure(settings: Measure): EditSession {
+        if (!canChangeMeasure(settings)) return this
+        return apply(ChangeMeasure(cursor.measure, settings)).let { changed ->
             // A shorter time signature can fill the Measure, taking away the free beat the cursor was on.
             changed.moveTo(cursor.copy(beat = cursor.beat.coerceAtMost(changed.lastBeat(cursor.measure))))
         }
+    }
+
+    /** Whether the cursor's Measure can take [settings]: a Pickup must stay shorter than its time signature. */
+    fun canChangeMeasure(settings: Measure): Boolean {
+        val pickup = song.pickup
+        return cursor.measure != 0 || pickup == null || pickup.ticks < settings.timeSignature.ticks
+    }
 
     fun changeTimeSignature(timeSignature: TimeSignature): EditSession =
         changeMeasure(measureAtCursor.copy(timeSignature = timeSignature))
@@ -282,8 +309,8 @@ class EditSession private constructor(
         return copy(copied = song.copyMeasures(section.first, section.last))
     }
 
-    /** Whether there are copied Measures to paste. */
-    val canPaste: Boolean get() = copied != null && copied.tracks.size == song.tracks.size
+    /** Whether there are copied Measures to paste before the cursor's Measure. */
+    val canPaste: Boolean get() = copied != null && copied.tracks.size == song.tracks.size && canInsertMeasureBefore
 
     /** Pastes the copied Measures before the cursor's Measure, in every Track; the cursor moves to the first of them. */
     fun pasteMeasures(): EditSession {

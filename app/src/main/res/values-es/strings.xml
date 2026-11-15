@@ -19,10 +19,10 @@
     <string name="tempo_percentage">Tempo %1$d%%</string>
     <string name="playback_loop">Bucle</string>
     <string name="loop_of_section">Bucle: %1$s</string>
-    <string name="loop_of_measures">Bucle: compases %1$d–%2$d</string>
+    <string name="loop_of_measures">Bucle: compases %1$s–%2$s</string>
     <string name="loop_title">Bucle</string>
     <string name="loop_none">Sin bucle</string>
-    <string name="loop_section_option">%1$s (compases %2$d–%3$d)</string>
+    <string name="loop_section_option">%1$s (compases %2$s–%3$s)</string>
     <string name="loop_measures_option">Compases</string>
     <string name="song_cannot_open">No se puede abrir esta canción. Puede estar dañada o haberse creado con una versión más reciente de Compass.</string>
     <string name="song_cannot_save">No se pudo guardar este cambio.</string>
@@ -167,7 +167,6 @@
     <string name="delete_measure">Eliminar compás</string>
     <string name="measure_settings_summary">%1$d/%2$d · %3$s · %4$d BPM</string>
     <string name="change_measure_settings">Cambiar indicación de compás, armadura y tempo: %1$s</string>
-    <string name="measure_settings_title">Compás %1$d</string>
     <string name="measure_settings_hint">Los cambios se aplican a todas las pistas, desde este compás hasta el siguiente cambio.</string>
     <string name="apply">Aplicar</string>
 
@@ -213,7 +212,7 @@
     <string name="edit_section">Editar sección</string>
     <string name="copy_section">Copiar sección</string>
     <string name="paste_measures">Pegar compases</string>
-    <string name="paste_measures_description">Pegar los compases copiados antes del compás %1$d, en todas las pistas</string>
+    <string name="paste_measures_description">Pegar los compases copiados antes de: %1$s, en todas las pistas</string>
     <string name="no_section">Sin sección</string>
     <string name="section_at_cursor">Sección: %1$s</string>
     <string name="new_section_title">Nueva sección</string>
@@ -229,4 +228,16 @@
     <string name="track_mute_description">Silenciar %1$s</string>
     <string name="track_solo_description">Solo %1$s</string>
     <string name="notation_loading">Preparando la canción…</string>
+    <string name="pickup">Anacrusa</string>
+    <string name="pickup_incomplete">La anacrusa está incompleta</string>
+    <string name="pickup_overfull">La anacrusa contiene más de lo que dura</string>
+    <string name="make_pickup">Crear anacrusa</string>
+    <string name="change_pickup">Cambiar anacrusa</string>
+    <string name="remove_pickup">Quitar anacrusa</string>
+    <string name="pickup_title">Anacrusa</string>
+    <string name="pickup_hint">La canción empieza a mitad de su primer compás. La anacrusa es la última parte del compás, así que el compás 1 viene justo después.</string>
+    <string name="field_pickup_length">Duración</string>
+    <string name="pickup_length_option">%1$s de %2$d tiempos</string>
+    <string name="pickup_too_long">La anacrusa debe seguir siendo más corta que su indicación de compás.</string>
+    <string name="pickup_is_zero">Escribe 0 para la anacrusa.</string>
 </resources>

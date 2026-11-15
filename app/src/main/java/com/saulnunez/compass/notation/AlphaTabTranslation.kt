@@ -3,6 +3,7 @@ package com.saulnunez.compass.notation
 import alphaTab.Settings
 import alphaTab.collections.DoubleList
 import alphaTab.model.Automation
+import alphaTab.model.BarNumberDisplay
 import alphaTab.model.Bar
 import alphaTab.model.Clef
 import alphaTab.model.Beat
@@ -21,7 +22,9 @@ import com.saulnunez.compass.domain.KeySignature
 import com.saulnunez.compass.domain.Note
 import com.saulnunez.compass.domain.NoteValue
 import com.saulnunez.compass.domain.Technique
+import com.saulnunez.compass.domain.VoiceElement
 import com.saulnunez.compass.domain.notes
+import com.saulnunez.compass.domain.restsLeadingIntoPickup
 import com.saulnunez.compass.domain.Song
 import com.saulnunez.compass.domain.Sound
 import com.saulnunez.compass.domain.Track
@@ -50,6 +53,9 @@ fun Song.toAlphaTabScore(settings: Settings): Score {
         }
         masterBar.timeSignatureNumerator = measure.timeSignature.beats.toDouble()
         masterBar.timeSignatureDenominator = measure.timeSignature.beatUnit.toDouble()
+        // alphaTab plays an anacrusis bar as long as its longest Track, so a Track that writes less
+        // than the Pickup rests at its start, as Playback does.
+        masterBar.isAnacrusis = index == 0 && pickup != null
         val bpm = measure.tempo.beatsPerMinute
         if (bpm != previousTempo) {
             masterBar.tempoAutomations.push(
@@ -63,16 +69,19 @@ fun Song.toAlphaTabScore(settings: Settings): Score {
     tracks.forEachIndexed { index, track ->
         val alphaTabTrack = track.toAlphaTabTrack(index)
         score.addTrack(alphaTabTrack)
-        alphaTabBarsFor(track).forEach(alphaTabTrack.staves[0]::addBar)
+        alphaTabBarsFor(track, index).forEach(alphaTabTrack.staves[0]::addBar)
     }
 
     // Compass has no dynamics; without this alphaTab draws its default forte under the first Note.
     score.stylesheet.hideDynamics = true
+    // alphaTab numbers bars by position, which would make the Pickup bar 1; Compass numbers the
+    // Measures after it from 1, so a Song with a Pickup shows no alphaTab bar numbers.
+    if (pickup != null) score.stylesheet.barNumberDisplay = BarNumberDisplay.Hide
     score.finish(settings)
     return score
 }
 
-private fun Song.alphaTabBarsFor(track: Track): List<Bar> = measures.mapIndexed { index, measure ->
+private fun Song.alphaTabBarsFor(track: Track, trackIndex: Int): List<Bar> = measures.mapIndexed { index, measure ->
     Bar().apply {
         clef = when (track.instrument.kind) {
             InstrumentKind.GUITAR -> Clef.G2
@@ -80,7 +89,8 @@ private fun Song.alphaTabBarsFor(track: Track): List<Bar> = measures.mapIndexed 
         }
         keySignature = measure.keySignature.toAlphaTab()
         keySignatureType = if (measure.keySignature.isMinor) KeySignatureType.Minor else KeySignatureType.Major
-        addVoice(track.alphaTabVoiceFor(index))
+        val leadIn = if (index == 0) restsLeadingIntoPickup(trackIndex) else emptyList()
+        addVoice(track.alphaTabVoiceFor(index, leadIn))
     }
 }
 
@@ -106,9 +116,10 @@ private fun Track.toAlphaTabTrack(index: Int): AlphaTabTrack {
     return alphaTabTrack
 }
 
-private fun Track.alphaTabVoiceFor(measureIndex: Int): Voice {
+/** The Voice of Measure [measureIndex], with [leadIn] before what is written. */
+private fun Track.alphaTabVoiceFor(measureIndex: Int, leadIn: List<VoiceElement>): Voice {
     val alphaTabVoice = Voice()
-    val elements = voice.measures[measureIndex]
+    val elements = leadIn + voice.measures[measureIndex]
     if (elements.isEmpty()) {
         alphaTabVoice.addBeat(Beat().apply { isEmpty = true })
     }

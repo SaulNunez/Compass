@@ -68,7 +68,7 @@ internal class HeadlessPlayer(private val song: Song, private val settings: Prac
         synth.positionChanged.on { if (!it.isSeek && mainStartedAt == null) mainStartedAt = elapsed }
     }
 
-    /** Taps Measure [measure] (0-based), as Practice mode does, and listens for [millis]. */
+    /** Taps Measure [measure] (0-based), as Practice mode does, and listens for [millis] or until alphaTab stops. */
     fun playFrom(measure: Int, millis: Double): HeadlessPlayer {
         val start = playbackStart(settings.loop?.measuresIn(song), measure)
         synth.tickPosition = tickLookup.getMasterBarStart(score.masterBars[start])
@@ -77,6 +77,8 @@ internal class HeadlessPlayer(private val song: Song, private val settings: Prac
             output.requestSamples()
             // Reported in micro-buffers, so what was played is known to within about 1.5 ms.
             var frames = output.takeFrames()
+            // alphaTab sends nothing more once it reaches the end of the Song.
+            if (frames == 0) break
             while (frames > 0) {
                 val chunk = minOf(frames, MICRO_BUFFER_FRAMES)
                 frames -= chunk
