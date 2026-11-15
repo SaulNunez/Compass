@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -37,6 +38,7 @@ import com.saulnunez.compass.ui.BackToLibraryButton
 import com.saulnunez.compass.ui.BEATS_RANGE
 import com.saulnunez.compass.ui.BEAT_UNITS
 import com.saulnunez.compass.ui.Dropdown
+import com.saulnunez.compass.ui.IconAndLabel
 import com.saulnunez.compass.ui.NumberField
 import com.saulnunez.compass.ui.TEMPO_RANGE
 import com.saulnunez.compass.ui.theme.CompassTheme
@@ -141,8 +143,9 @@ fun NewSongScreen(onCreate: (Song) -> Unit, onBack: () -> Unit, modifier: Modifi
                         ),
                     )
                 },
+                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text(stringResource(R.string.create)) }
+            ) { IconAndLabel(R.drawable.ic_add, stringResource(R.string.create)) }
         }
     }
 }

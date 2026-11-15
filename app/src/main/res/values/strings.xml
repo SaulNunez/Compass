@@ -3,7 +3,7 @@
     <!-- Subtitle under a Song's title in Practice mode; %1$s is the artist. -->
     <string name="practice_mode_subtitle">%1$s · Practice mode</string>
     <string name="practice_mode">Practice mode</string>
-    <string name="back_to_library">Library</string>
+    <string name="back_to_library">Back to Library</string>
 
     <!-- Practice mode: which views of the Track to show. -->
     <string name="view_tablature">Tablature</string>

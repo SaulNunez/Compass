@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -24,7 +25,6 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -56,6 +56,8 @@ import com.saulnunez.compass.notation.rememberNotationPlayer
 import com.saulnunez.compass.ui.AdaptivePanes
 import com.saulnunez.compass.ui.BackToLibraryButton
 import com.saulnunez.compass.ui.Dropdown
+import com.saulnunez.compass.ui.IconAction
+import com.saulnunez.compass.ui.IconAndLabel
 import com.saulnunez.compass.ui.theme.CompassTheme
 import kotlin.math.roundToInt
 
@@ -112,8 +114,8 @@ fun PracticeScreen(
                 },
                 navigationIcon = { BackToLibraryButton(onBack) },
                 actions = {
-                    TextButton(onClick = onSendSongFile) { Text(stringResource(R.string.send_song_file)) }
-                    TextButton(onClick = onEdit) { Text(stringResource(R.string.enter_edit_mode)) }
+                    IconAction(R.drawable.ic_share, stringResource(R.string.send_song_file), onSendSongFile)
+                    IconAction(R.drawable.ic_edit, stringResource(R.string.enter_edit_mode), onEdit)
                 },
             )
         },
@@ -204,8 +206,13 @@ private fun PlaybackControls(
             Button(
                 onClick = { if (player.isPlaying) player.stop() else player.play() },
                 enabled = player.isReady,
+                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
             ) {
-                Text(stringResource(if (player.isPlaying) R.string.playback_stop else R.string.playback_play))
+                if (player.isPlaying) {
+                    IconAndLabel(R.drawable.ic_stop, stringResource(R.string.playback_stop))
+                } else {
+                    IconAndLabel(R.drawable.ic_play_arrow, stringResource(R.string.playback_play))
+                }
             }
             FilterChip(
                 selected = settings.click,

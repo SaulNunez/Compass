@@ -2,7 +2,7 @@
     <string name="app_name">Compass</string>
     <string name="practice_mode_subtitle">%1$s · Modo práctica</string>
     <string name="practice_mode">Modo práctica</string>
-    <string name="back_to_library">Biblioteca</string>
+    <string name="back_to_library">Volver a la biblioteca</string>
 
     <!-- Modo práctica: qué vistas de la pista se muestran. -->
     <string name="view_tablature">Tablatura</string>

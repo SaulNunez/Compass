@@ -8,7 +8,9 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.activity.ComponentActivity
@@ -44,13 +46,13 @@ class PracticeModeTest {
         val trackMix = 2 * demoSong.tracks.size
         compose.onAllNodes(hasClickAction())
             .assertCountEquals(leaveSendAndEdit + ShownViews.entries.size + playbackTools + trackMix)
-        compose.onNodeWithText(string(R.string.back_to_library)).assertExists()
-        compose.onNodeWithText(string(R.string.send_song_file)).assertExists()
-        compose.onNodeWithText(string(R.string.enter_edit_mode)).assertExists()
+        compose.onNodeWithContentDescription(string(R.string.back_to_library)).assertExists()
+        compose.onNodeWithContentDescription(string(R.string.send_song_file)).assertExists()
+        compose.onNodeWithContentDescription(string(R.string.enter_edit_mode)).assertExists()
         compose.onNodeWithText(string(R.string.playback_loop)).assertHasClickAction()
         compose.onAllNodesWithText(string(R.string.track_mute)).assertCountEquals(demoSong.tracks.size)
         compose.onAllNodesWithText(string(R.string.track_solo)).assertCountEquals(demoSong.tracks.size)
-        compose.onAllNodesWithText(string(R.string.undo)).assertCountEquals(0)
+        compose.onAllNodesWithContentDescription(string(R.string.undo)).assertCountEquals(0)
         compose.onAllNodesWithText(string(R.string.rest)).assertCountEquals(0)
     }
 
@@ -66,7 +68,7 @@ class PracticeModeTest {
         }
 
         compose.onAllNodesWithText("editing").assertCountEquals(0)
-        compose.onNodeWithText(string(R.string.enter_edit_mode)).performClick()
+        compose.onNodeWithContentDescription(string(R.string.enter_edit_mode)).performClick()
         compose.onNodeWithText("editing").assertExists()
     }
 }
