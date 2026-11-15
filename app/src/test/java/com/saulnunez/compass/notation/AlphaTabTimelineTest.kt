@@ -188,6 +188,35 @@ class AlphaTabTimelineTest {
     }
 
     @Test
+    fun `a Track that leaves the Pickup short plays its Notes at the end of it`() {
+        val shortBass = withPickup.copy(
+            tracks = listOf(withPickup.tracks[0], bass.copy(voice = Voice(listOf(listOf(Note(4, 5, Duration.EIGHTH)), withPickup.tracks[1].voice.measures[1])))),
+        )
+        val settings = PracticeSettings()
+        val timeline = shortBass.playbackTimeline(settings)
+
+        val player = HeadlessPlayer(shortBass, settings).playFrom(measure = 0, millis = timeline.end())
+
+        // The eighth Note is the second half of the one-beat Pickup, at 120 BPM.
+        assertEquals(250.0, timeline.notes.single { it.track == 1 && it.measure == 0 }.startMillis, 0.0)
+        assertPlaysAsTimeline(timeline, player, timeline.end())
+    }
+
+    @Test
+    fun `a Track that overfills the Pickup still plays every Note`() {
+        val overfull = withPickup.copy(
+            tracks = listOf(guitar.copy(voice = Voice(listOf(listOf(Note(1, 3, Duration.WHOLE)), withPickup.tracks[0].voice.measures[1]))), withPickup.tracks[1]),
+        )
+        val settings = PracticeSettings()
+        val timeline = overfull.playbackTimeline(settings)
+
+        val player = HeadlessPlayer(overfull, settings).playFrom(measure = 0, millis = 10_000.0)
+
+        // alphaTab's Pickup grows to hold the whole Note, so only the Notes, not their times, agree.
+        assertEquals(timeline.notes.size, player.notes.filterNot(player::isMuted).size)
+    }
+
+    @Test
     fun `a Loop from the Pickup goes straight back to it each time`() {
         val settings = PracticeSettings(loop = Loop.OfMeasures(first = 0, last = 1))
         val timeline = withPickup.playbackTimeline(settings, passes = 3)

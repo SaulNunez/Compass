@@ -49,6 +49,14 @@ class PickupTest {
     }
 
     @Test
+    fun `a Pickup that fills the first Measure moves the cursor off the free beat after it`() {
+        val onFreeBeat = EditSession.start(song).typeDigit(3).moveToNextBeat()
+        assertEquals(1, onFreeBeat.cursor.beat)
+
+        assertEquals(0, onFreeBeat.makePickup(oneBeat).cursor.beat)
+    }
+
+    @Test
     fun `no Measure goes in before the Pickup, but one can go straight after it`() {
         val pickup = EditSession.start(song).typeDigit(3).makePickup(oneBeat)
 

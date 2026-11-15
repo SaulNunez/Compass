@@ -168,7 +168,8 @@ class EditSession private constructor(
     /** Makes the first Measure a Pickup lasting [pickup], or changes its length; does nothing when it can't be. */
     fun makePickup(pickup: Pickup): EditSession {
         if (!canMakePickup(pickup)) return this
-        return apply(MakePickup(pickup)).let { it.moveTo(it.cursor) }
+        // A shorter Pickup can fill the Measure, taking away the free beat the cursor was on.
+        return apply(MakePickup(pickup)).let { made -> made.moveTo(cursor.copy(beat = cursor.beat.coerceAtMost(made.lastBeat(cursor.measure)))) }
     }
 
     /** Makes the first Measure full length again, keeping what is written in it. */

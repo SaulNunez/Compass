@@ -10,7 +10,7 @@ A Song's first Measure can be a Pickup, shorter than its time signature. We stor
 ## Consequences
 
 - The saved Song format gets a version bump and a migration. Existing Songs have no Pickup.
-- When translating a Song for alphaTab, the first Measure is marked `isAnacrusis`, and each Track's Pickup bar is padded with Rests up to the Pickup's length, because alphaTab plays an anacrusis bar as long as its longest Track. A Track that overfills the Pickup still makes alphaTab's Pickup longer than Compass's until it is fixed; Compass flags it as overfull.
+- When translating a Song for alphaTab, the first Measure is marked `isAnacrusis`, and a Track that writes less than the Pickup gets Rests before its Notes, up to the Pickup's length, because alphaTab plays an anacrusis bar as long as its longest Track. Playback does the same, so a short Track's Notes fall at the end of the Pickup. A Track that overfills the Pickup still makes alphaTab's Pickup longer than Compass's until it is fixed; Compass flags it as overfull.
 - alphaTab numbers bars by position and can't renumber them, so it would call the Pickup bar 1. Songs with a Pickup show no alphaTab bar numbers; Compass's own labels number from the first full Measure.
 - alphaTab's count-in is always one full Measure, and Compass can only switch it on or off. So before a Pickup, Playback counts in one full Measure and the Pickup comes straight after, not on its own beats.
 - Importing from Guitar Pro or MusicXML later has to choose a Pickup length from what the Pickup contains.

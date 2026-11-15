@@ -24,7 +24,7 @@ data class Measure(
 
 /**
  * How long a Song's Pickup lasts, in 16th notes. It must be shorter than the first Measure's time
- * signature; the Pickup is the last part of that bar, so a one-beat Pickup in 4/4 is beat 4.
+ * signature; the Pickup is the last part of that Measure, so a one-beat Pickup in 4/4 is beat 4.
  */
 data class Pickup(val sixteenths: Int) {
     init {
@@ -151,12 +151,20 @@ fun Song.measureFill(track: Int, measure: Int): MeasureFill {
 }
 
 /**
- * The Rests, longest first, that make up what the Track at index [track] leaves unwritten in the
- * Pickup, down to a 32nd note; none when there is no Pickup or the Track fills it.
+ * How long the Track at index [track] rests at the start of the Pickup: a Track that writes less
+ * than the Pickup plays what it wrote at the Pickup's end. 0 with no Pickup, or when the Track fills it or more.
  */
-fun Song.restsFillingPickup(track: Int): List<Rest> {
-    if (pickup == null) return emptyList()
-    var left = pickup.ticks - tracks[track].voice.measures[0].sumOf { it.duration.ticks }
+internal fun Song.pickupLeadIn(track: Int): Int {
+    if (pickup == null) return 0
+    return (pickup.ticks - tracks[track].voice.measures[0].sumOf { it.duration.ticks }).coerceAtLeast(0)
+}
+
+/**
+ * The Rests, longest first, a Track at index [track] rests for at the start of the Pickup before
+ * what it wrote (see [pickupLeadIn]), down to a 32nd note.
+ */
+fun Song.restsLeadingIntoPickup(track: Int): List<Rest> {
+    var left = pickupLeadIn(track)
     return NoteValue.entries.sortedByDescending { it.ticks }.flatMap { value ->
         List(left / value.ticks) { Rest(Duration(value)) }.also { left %= value.ticks }
     }

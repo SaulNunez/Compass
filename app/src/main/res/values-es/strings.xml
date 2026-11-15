@@ -230,7 +230,7 @@
     <string name="notation_loading">Preparando la canción…</string>
     <string name="pickup">Anacrusa</string>
     <string name="pickup_incomplete">La anacrusa está incompleta</string>
-    <string name="pickup_overfull">La anacrusa dura más de lo que permite su duración</string>
+    <string name="pickup_overfull">La anacrusa contiene más de lo que dura</string>
     <string name="make_pickup">Crear anacrusa</string>
     <string name="change_pickup">Cambiar anacrusa</string>
     <string name="remove_pickup">Quitar anacrusa</string>

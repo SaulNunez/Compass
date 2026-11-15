@@ -70,7 +70,7 @@ fun Song.playbackTimeline(settings: PracticeSettings, fromMeasure: Int = 0, pass
 
         tracks.forEachIndexed { trackIndex, track ->
             if (!settings.isHeard(trackIndex)) return@forEachIndexed
-            var ticksBefore = 0
+            var ticksBefore = if (index == 0) pickupLeadIn(trackIndex) else 0
             track.voice.measures[index].forEach { element ->
                 val ticks = element.duration.ticks
                 // A Chord's Notes all start together.
@@ -103,19 +103,19 @@ fun Song.playbackTimeline(settings: PracticeSettings, fromMeasure: Int = 0, pass
 
 /**
  * How a Measure's time signature and Tempo play out at the tempo percentage, when it lasts [ticks]:
- * the time signature's full length, or less for a Pickup, which is the last part of its bar.
+ * the time signature's full length, or less for a Pickup, which is the last part of its Measure.
  */
 private class MeasureTiming(signature: TimeSignature, val beatsPerMinute: Double, ticks: Int) {
     private val beatTicks = TICKS_PER_WHOLE / signature.beatUnit
     private val beats = signature.beats
-    /** The part of the bar a Pickup leaves out, before it. */
+    /** The part of the time signature a Pickup leaves out, before it. */
     private val skipped = beats * beatTicks - ticks
     val lengthMillis = millis(ticks)
 
     /** How long [ticks] last; Tempos count quarter notes per minute. */
     fun millis(ticks: Int): Double = ticks * MILLIS_PER_MINUTE / (beatsPerMinute * TICKS_PER_QUARTER)
 
-    /** When each beat of the bar played from [measureStart] starts, leaving out those before a Pickup. */
+    /** When each beat of the Measure played from [measureStart] starts, leaving out those before a Pickup. */
     fun beatStarts(measureStart: Double) =
         (0 until beats).map { it * beatTicks - skipped }.filter { it >= 0 }.map { measureStart + millis(it) }
 }

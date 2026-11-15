@@ -27,12 +27,12 @@
     <string name="playback_loop">Loop</string>
     <!-- The Loop in use when it is a Section; %1$s is the Section's name. -->
     <string name="loop_of_section">Loop: %1$s</string>
-    <!-- The Loop in use when it is a range of Measures; %1$d and %2$d are its first and last Measure. -->
+    <!-- The Loop in use when it is a range of Measures; %1$s and %2$s are its first and last Measure: a number, or the word for the Pickup. -->
     <string name="loop_of_measures">Loop: Measures %1$s–%2$s</string>
     <string name="loop_title">Loop</string>
     <!-- Choice in the Loop dialog: play to the end of the Song instead. -->
     <string name="loop_none">No Loop</string>
-    <!-- Choice in the Loop dialog: a Section; %1$s is its name, %2$d and %3$d its first and last Measure. -->
+    <!-- Choice in the Loop dialog: a Section; %1$s is its name, %2$s and %3$s its first and last Measure: a number, or the word for the Pickup. -->
     <string name="loop_section_option">%1$s (Measures %2$s–%3$s)</string>
     <!-- Choice in the Loop dialog: any range of Measures, given below it. -->
     <string name="loop_measures_option">Measures</string>
@@ -269,13 +269,14 @@
     <string name="notation_loading">Preparing the Song…</string>
     <string name="pickup">Pickup</string>
     <string name="pickup_incomplete">The Pickup is incomplete</string>
-    <string name="pickup_overfull">The Pickup is too long for its length</string>
+    <string name="pickup_overfull">The Pickup holds more than its length</string>
     <string name="make_pickup">Make Pickup</string>
     <string name="change_pickup">Change Pickup</string>
     <string name="remove_pickup">Remove Pickup</string>
     <string name="pickup_title">Pickup</string>
-    <string name="pickup_hint">The Song starts partway through its first Measure. The Pickup is the last part of the bar, so Measure 1 comes straight after it.</string>
+    <string name="pickup_hint">The Song starts partway through its first Measure. The Pickup is the last part of that Measure, so Measure 1 comes straight after it.</string>
     <string name="field_pickup_length">Length</string>
+    <!-- A Pickup length to choose; %1$s is how many beats it lasts (e.g. 1 or 1.5), %2$d the beats in its time signature. -->
     <string name="pickup_length_option">%1$s of %2$d beats</string>
     <string name="pickup_too_long">The Pickup must stay shorter than its time signature.</string>
     <string name="pickup_is_zero">Enter 0 for the Pickup.</string>
