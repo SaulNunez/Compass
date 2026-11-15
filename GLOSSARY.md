@@ -35,6 +35,10 @@ _Avoid_: Effect, articulation, ornament
 A span of a Song with one time signature, key signature and Tempo, shared by every Track; Songs are written out Measure by Measure in full.
 _Avoid_: Bar
 
+**Pickup**:
+A Song's first Measure when it is shorter than its time signature, so the music starts partway through it. Only the first Measure can be a Pickup; it keeps its own time signature, key signature and Tempo, lasts a length set for the Song rather than by what any Track has written, and is not numbered, so Measure 1 is the first full Measure after it.
+_Avoid_: Anacrusis, upbeat, partial measure
+
 **Tempo**:
 The written speed of a Song in beats per minute, set at the first Measure and changeable at any later Measure. Part of the Song, unlike the practice tempo percentage.
 _Avoid_: Speed, BPM (as a noun for the setting)
